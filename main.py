@@ -1,4 +1,5 @@
 import ollama
+import os
 from uuid import uuid4, UUID
 
 from request import PaperlessNGXService
@@ -11,8 +12,12 @@ from chromadb.utils.embedding_functions.ollama_embedding_function import (
     OllamaEmbeddingFunction,
 )
 
+from dotenv import load_dotenv
+
 client = chromadb.EphemeralClient()
 collection = client.create_collection(name="docs")
+
+load_dotenv()
 
 
 class Chunk:
@@ -34,7 +39,7 @@ class Chunk:
 class Chunker:
     def __init__(self) -> None:
         self.embedding_fx = OllamaEmbeddingFunction(
-            url="http://localhost:11434",
+            url=os.getenv("OLLAMA_URL", ""),
             model_name="mxbai-embed-large",
         )
 
@@ -67,7 +72,7 @@ class Chunker:
 
 
 embedding_fx = OllamaEmbeddingFunction(
-    url="http://localhost:11434",
+    url=os.getenv("OLLAMA_URL", ""),
     model_name="mxbai-embed-large",
 )
 
@@ -84,7 +89,7 @@ for text in texts:
     chunker.chunk_document(document=text)
 
 # Ask
-input = "How many teeth has Simba had removed?"
+input = "How many teeth has Simba had removed? Who is his current vet?"
 embeddings = embedding_fx(input=[input])
 results = collection.query(query_texts=[input], query_embeddings=embeddings)
 print(results)
