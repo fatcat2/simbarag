@@ -17,3 +17,8 @@ class PaperlessNGXService:
         print(f"Getting data from: {self.url}")
         r = httpx.get(self.url, headers=self.headers)
         return r.json()["results"]
+
+
+if __name__ == "__main__":
+    pp = PaperlessNGXService()
+    print(pp.get_data()[0].keys())
