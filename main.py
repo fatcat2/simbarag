@@ -32,7 +32,7 @@ def chunk_data(texts: list[str], collection):
     chunker = Chunker(collection)
 
     print(f"chunking {len(texts)} documents")
-    for text in texts[: len(texts) // 2]:
+    for text in texts:
         chunker.chunk_document(document=text)
 
 
@@ -40,7 +40,6 @@ def consult_oracle(input: str, collection):
     # Ask
     embeddings = Chunker.embedding_fx(input=[input])
     results = collection.query(query_texts=[input], query_embeddings=embeddings)
-    print(results)
 
     # Generate
     output = ollama.generate(
