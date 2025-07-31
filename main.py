@@ -1,4 +1,5 @@
 import logging
+import os
 
 import argparse
 import chromadb
@@ -11,7 +12,9 @@ from chunker import Chunker
 
 from dotenv import load_dotenv
 
-client = chromadb.PersistentClient(path="/Users/ryanchen/Programs/raggr/chromadb")
+load_dotenv()
+
+client = chromadb.PersistentClient(path=os.getenv("CHROMADB_PATH", ""))
 simba_docs = client.get_or_create_collection(name="simba_docs")
 feline_vet_lookup = client.get_or_create_collection(name="feline_vet_lookup")
 
@@ -23,8 +26,6 @@ parser.add_argument("query", type=str, help="questions about simba's health")
 parser.add_argument(
     "--reindex", action="store_true", help="re-index the simba documents"
 )
-
-load_dotenv()
 
 
 def chunk_data(texts: list[str], collection):
