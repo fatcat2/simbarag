@@ -21,4 +21,4 @@ class PaperlessNGXService:
 
 if __name__ == "__main__":
     pp = PaperlessNGXService()
-    print(pp.get_data()[0].keys())
+    pp.get_data()
