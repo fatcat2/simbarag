@@ -1,6 +1,7 @@
 import os
 from math import ceil
 import re
+from typing import Union
 from uuid import UUID, uuid4
 
 from chromadb.utils.embedding_functions.ollama_embedding_function import (
@@ -87,7 +88,12 @@ class Chunker:
     def __init__(self, collection) -> None:
         self.collection = collection
 
-    def chunk_document(self, document: str, chunk_size: int = 1000) -> list[Chunk]:
+    def chunk_document(
+        self,
+        document: str,
+        chunk_size: int = 1000,
+        metadata: dict[str, Union[str, float]] = {},
+    ) -> list[Chunk]:
         doc_uuid = uuid4()
 
         chunk_size = min(chunk_size, len(document))
@@ -110,6 +116,7 @@ class Chunker:
                 ids=[str(doc_uuid) + ":" + str(i)],
                 documents=[text_chunk],
                 embeddings=embedding,
+                metadatas=[metadata],
             )
 
         return chunks
