@@ -1,6 +1,6 @@
 import json
 from typing import Literal
-
+import datetime
 from ollama import chat, ChatResponse
 
 from pydantic import BaseModel, Field
@@ -29,9 +29,9 @@ class GeneratedQuery(BaseModel):
 
 
 PROMPT = """
-You are an information specialist that processes user queries. The user queries are all about 
+You are an information specialist that processes user queries. The current year is 2025. The user queries are all about 
 a cat, Simba, and its records. The types of records are listed below. Using the query, extract the 
-type of record the user is trying to query and the date range the user is trying to query.
+the date range the user is trying to query. You should return the it as a JSON. The date tag is created_date. Return the date in epoch time
 
 
 You have several operators at your disposal:
@@ -49,18 +49,18 @@ Logical operators:
 
 ### Example 1
 Query: "Who is Simba's current vet?"
-Metadata fields: "{"created_date, tags"}"
-Extracted metadata fields: {"$and": [{"created_date: {"$gt": "2025-01-01"}, "tags": {"$in": ["bill", "medical records", "aftercare"]}}]}
+Metadata fields: "{"created_date"}"
+Extracted metadata fields: {"created_date: {"$gt": "2025-01-01"}}
 
 ### Example 2
 Query: "How many teeth has Simba had removed?"
-Metadata fields: {"tags"}
-Extracted metadata fields: {"tags": "medical records"}
+Metadata fields: {}
+Extracted metadata fields: {}
 
 ### Example 3
 Query: "How many times has Simba been to the vet this year?"
-Metadata fields: {"tags", "created_date"}
-Extracted metadata fields: {"$and": [{"created_date": {"gt": "2025-01-01"}, "tags": {"$in": ["bill"]}}]}
+Metadata fields: {"created_date"}
+Extracted metadata fields: {"created_date": {"gt": "2025-01-01"}}
 
 document_types:
 - aftercare
@@ -76,6 +76,19 @@ class QueryGenerator:
     def __init__(self) -> None:
         pass
 
+    def date_to_epoch(self, date_str: str) -> float:
+        split_date = date_str.split("-")
+        date = datetime.datetime(
+            int(split_date[0]),
+            int(split_date[1]),
+            int(split_date[2]),
+            0,
+            0,
+            0,
+        )
+
+        return date.timestamp()
+
     def get_query(self, input: str):
         response: ChatResponse = chat(
             model="gemma3n:e4b",
@@ -86,13 +99,20 @@ class QueryGenerator:
             format=GeneratedQuery.model_json_schema(),
         )
 
-        print(
-            json.loads(
-                json.loads(response["message"]["content"])["extracted_metadata_fields"]
-            )
+        query = json.loads(
+            json.loads(response["message"]["content"])["extracted_metadata_fields"]
         )
+        date_key = list(query["created_date"].keys())[0]
+        query["created_date"][date_key] = self.date_to_epoch(
+            query["created_date"][date_key]
+        )
+
+        if "$" not in date_key:
+            query["created_date"]["$" + date_key] = query["created_date"][date_key]
+
+        return query
 
 
 if __name__ == "__main__":
     qg = QueryGenerator()
-    qg.get_query("How old is Simba?")
+    print(qg.get_query("How heavy is Simba?"))
