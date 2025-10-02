@@ -3,6 +3,8 @@ from typing import Literal
 import datetime
 from ollama import chat, ChatResponse
 
+from openai import OpenAI
+
 from pydantic import BaseModel, Field
 
 # This uses inferred filters — which means using LLM to create the metadata filters
@@ -27,11 +29,15 @@ class GeneratedQuery(BaseModel):
     fields: list[str]
     extracted_metadata_fields: str
 
+class Time(BaseModel):
+    time: int
 
 PROMPT = """
 You are an information specialist that processes user queries. The current year is 2025. The user queries are all about 
 a cat, Simba, and its records. The types of records are listed below. Using the query, extract the 
-the date range the user is trying to query. You should return the it as a JSON. The date tag is created_date. Return the date in epoch time
+the date range the user is trying to query. You should return it as a JSON. The date tag is created_date. Return the date in epoch time.
+
+If the created_date cannot be ascertained, set it to epoch time start.
 
 
 You have several operators at your disposal:
@@ -90,18 +96,31 @@ class QueryGenerator:
         return date.timestamp()
 
     def get_query(self, input: str):
-        response: ChatResponse = chat(
-            model="gemma3n:e4b",
-            messages=[
+        client = OpenAI()
+        print(input)
+        response = client.responses.parse(
+            model="gpt-4o",
+            input=[
                 {"role": "system", "content": PROMPT},
                 {"role": "user", "content": input},
             ],
-            format=GeneratedQuery.model_json_schema(),
+            text_format=Time,
         )
+        print(response)
+        query = json.loads(response.output_parsed.extracted_metadata_fields)
 
-        query = json.loads(
-            json.loads(response["message"]["content"])["extracted_metadata_fields"]
-        )
+        # response: ChatResponse = chat(
+            # model="gemma3n:e4b",
+            # messages=[
+                # {"role": "system", "content": PROMPT},
+                # {"role": "user", "content": input},
+            # ],
+            # format=GeneratedQuery.model_json_schema(),
+        # )
+
+        # query = json.loads(
+            # json.loads(response["message"]["content"])["extracted_metadata_fields"]
+        # )
         date_key = list(query["created_date"].keys())[0]
         query["created_date"][date_key] = self.date_to_epoch(
             query["created_date"][date_key]

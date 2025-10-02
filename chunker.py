@@ -96,7 +96,7 @@ class Chunker:
     ) -> list[Chunk]:
         doc_uuid = uuid4()
 
-        chunk_size = min(chunk_size, len(document))
+        chunk_size = min(chunk_size, len(document)) or 1
 
         chunks = []
         num_chunks = ceil(len(document) / chunk_size)
