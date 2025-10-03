@@ -23,6 +23,8 @@ RUN uv pip install --system -e .
 
 # Copy application code
 COPY *.py ./
+COPY startup.sh ./
+RUN chmod +x startup.sh
 
 # Copy frontend code and build
 COPY raggr-frontend ./raggr-frontend
@@ -40,5 +42,5 @@ EXPOSE 8080
 ENV PYTHONPATH=/app
 ENV CHROMADB_PATH=/app/chromadb
 
-# Run the Flask application
-CMD ["python", "app.py"]
+# Run the startup script
+CMD ["./startup.sh"]

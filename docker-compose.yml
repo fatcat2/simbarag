@@ -3,24 +3,15 @@ version: '3.8'
 services:
   raggr:
     image: torrtle/simbarag:latest
-    ports:
-      - "8080:8080"
+    network_mode: host
     environment:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
-      - OLLAMA_URL=${OLLAMA_URL:-http://172.17.0.1:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
       - CHROMADB_PATH=/app/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - chromadb_data:/app/chromadb
-    networks:
-      - raggr-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   chromadb_data:
-
-networks:
-  raggr-network:
-    driver: bridge
