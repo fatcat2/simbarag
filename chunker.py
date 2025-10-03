@@ -81,7 +81,7 @@ class Chunk:
 
 class Chunker:
     embedding_fx = OllamaEmbeddingFunction(
-        url=os.getenv("OLLAMA_URL", ""),
+        url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
         model_name="mxbai-embed-large",
     )
 

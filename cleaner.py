@@ -12,6 +12,9 @@ from request import PaperlessNGXService
 
 load_dotenv()
 
+# Configure ollama client with URL from environment or default to localhost
+ollama_client = ollama.Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
+
 parser = argparse.ArgumentParser(description="use llm to clean documents")
 parser.add_argument("document_id", type=str, help="questions about simba's health")
 
@@ -131,7 +134,7 @@ Someone will kill the innocent kittens if you don't extract the text exactly. So
 
 
 def summarize_pdf_image(filepaths: list[str]):
-    res = ollama.chat(
+    res = ollama_client.chat(
         model="gemma3:4b",
         messages=[
             {

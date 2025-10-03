@@ -8,28 +8,18 @@ services:
     environment:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
-      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://172.17.0.1:11434}
       - CHROMADB_PATH=/app/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - chromadb_data:/app/chromadb
-    depends_on:
-      - ollama
     networks:
       - raggr-network
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - raggr-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   chromadb_data:
-  ollama_data:
 
 networks:
   raggr-network:

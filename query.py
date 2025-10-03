@@ -1,11 +1,15 @@
 import json
+import os
 from typing import Literal
 import datetime
-from ollama import chat, ChatResponse
+from ollama import chat, ChatResponse, Client
 
 from openai import OpenAI
 
 from pydantic import BaseModel, Field
+
+# Configure ollama client with URL from environment or default to localhost
+ollama_client = Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
 
 # This uses inferred filters — which means using LLM to create the metadata filters
 
@@ -109,7 +113,7 @@ class QueryGenerator:
         print(response)
         query = json.loads(response.output_parsed.extracted_metadata_fields)
 
-        # response: ChatResponse = chat(
+        # response: ChatResponse = ollama_client.chat(
             # model="gemma3n:e4b",
             # messages=[
                 # {"role": "system", "content": PROMPT},

@@ -18,6 +18,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Configure ollama client with URL from environment or default to localhost
+ollama_client = ollama.Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
+
 client = chromadb.PersistentClient(path=os.getenv("CHROMADB_PATH", ""))
 simba_docs = client.get_or_create_collection(name="simba_docs")
 feline_vet_lookup = client.get_or_create_collection(name="feline_vet_lookup")
@@ -128,7 +131,7 @@ def consult_oracle(input: str, collection):
     # Generate
     print("Starting LLM generation")
     llm_start = time.time()
-    # output = ollama.generate(
+    # output = ollama_client.generate(
         # model="gemma3n:e4b",
         # prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
     # )
