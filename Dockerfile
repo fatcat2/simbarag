@@ -21,14 +21,14 @@ COPY pyproject.toml ./
 # Install Python dependencies using uv
 RUN uv pip install --system -e .
 
+# Copy application code
+COPY *.py ./
+
 # Copy frontend code and build
 COPY raggr-frontend ./raggr-frontend
 WORKDIR /app/raggr-frontend
 RUN yarn install && yarn build
-
-# Copy application code
 WORKDIR /app
-COPY *.py ./
 
 # Create ChromaDB directory
 RUN mkdir -p /app/chromadb
