@@ -4,8 +4,8 @@ import re
 from typing import Union
 from uuid import UUID, uuid4
 
-from chromadb.utils.embedding_functions.ollama_embedding_function import (
-    OllamaEmbeddingFunction,
+from chromadb.utils.embedding_functions.openai_embedding_function import (
+    OpenAIEmbeddingFunction,
 )
 from dotenv import load_dotenv
 
@@ -80,9 +80,9 @@ class Chunk:
 
 
 class Chunker:
-    embedding_fx = OllamaEmbeddingFunction(
-        url=os.getenv("OLLAMA_URL", "http://host.docker.internal:11434"),
-        model_name="mxbai-embed-large",
+    embedding_fx = OpenAIEmbeddingFunction(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model_name="text-embedding-3-small",
     )
 
     def __init__(self, collection) -> None:
