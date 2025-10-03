@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  raggr:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
+      - BASE_URL=${BASE_URL}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - CHROMADB_PATH=/app/chromadb
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - chromadb_data:/app/chromadb
+    depends_on:
+      - ollama
+    networks:
+      - raggr-network
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - raggr-network
+
+volumes:
+  chromadb_data:
+  ollama_data:
+
+networks:
+  raggr-network:
+    driver: bridge

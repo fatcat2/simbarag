@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 
 from main import consult_simba_oracle
 
@@ -30,4 +30,8 @@ def query():
 def webhook():
     data = request.get_json()
     print(data)
+    return jsonify({"status": "received"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)
 

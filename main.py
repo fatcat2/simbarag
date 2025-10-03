@@ -132,9 +132,12 @@ def consult_oracle(input: str, collection):
         # model="gemma3n:e4b",
         # prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
     # )
-    response = openai_client.responses.create(
+    response = openai_client.chat.completions.create(
         model="gpt-4o-mini",
-        input=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that understands veterinary terms."},
+            {"role": "user", "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}"}
+        ]
     )
     llm_end = time.time()
     print(f"LLM generation took {llm_end - llm_start:.2f} seconds")
@@ -142,7 +145,7 @@ def consult_oracle(input: str, collection):
     total_time = time.time() - start_time
     print(f"Total consult_oracle execution took {total_time:.2f} seconds")
 
-    return response.output_text
+    return response.choices[0].message.content
 
 
 def paperless_workflow(input):

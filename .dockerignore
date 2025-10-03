@@ -1,0 +1,16 @@
+.git
+.gitignore
+README.md
+.env
+.DS_Store
+chromadb/
+chroma_db/
+raggr-frontend/node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+.pytest_cache/
