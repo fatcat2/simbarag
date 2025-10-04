@@ -8,8 +8,20 @@ const App = () => {
 	const [query, setQuery] = useState<string>("");
 	const [answer, setAnswer] = useState<string>("");
 	const [loading, setLoading] = useState<boolean>(false);
+	const [simbaMode, setSimbaMode] = useState<boolean>(false);
+
+	const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
 
 	const handleQuestionSubmit = () => {
+		if (simbaMode) {
+			console.log("simba mode activated");
+			setLoading(true);
+			const randomIndex = Math.floor(Math.random() * simbaAnswers.length);
+			const randomElement = simbaAnswers[randomIndex];
+			setAnswer(randomElement);
+			setTimeout(() => setLoading(false), 3500);
+			return;
+		}
 		const payload = { query: query };
 		setLoading(true);
 		axios
@@ -41,6 +53,13 @@ const App = () => {
 					>
 						Submit
 					</button>
+				</div>
+				<div className="flex flex-row justify-center gap-2 grow">
+					<input
+						type="checkbox"
+						onChange={(event) => setSimbaMode(event.target.checked)}
+					/>
+					<p>simba mode?</p>
 				</div>
 				{loading ? (
 					<div className="flex flex-col w-full animate-pulse gap-2">
