@@ -33,8 +33,10 @@ class GeneratedQuery(BaseModel):
     fields: list[str]
     extracted_metadata_fields: str
 
+
 class Time(BaseModel):
     time: int
+
 
 PROMPT = """
 You are an information specialist that processes user queries. The current year is 2025. The user queries are all about 
@@ -114,16 +116,16 @@ class QueryGenerator:
         query = json.loads(response.output_parsed.extracted_metadata_fields)
 
         # response: ChatResponse = ollama_client.chat(
-            # model="gemma3n:e4b",
-            # messages=[
-                # {"role": "system", "content": PROMPT},
-                # {"role": "user", "content": input},
-            # ],
-            # format=GeneratedQuery.model_json_schema(),
+        # model="gemma3n:e4b",
+        # messages=[
+        # {"role": "system", "content": PROMPT},
+        # {"role": "user", "content": input},
+        # ],
+        # format=GeneratedQuery.model_json_schema(),
         # )
 
         # query = json.loads(
-            # json.loads(response["message"]["content"])["extracted_metadata_fields"]
+        # json.loads(response["message"]["content"])["extracted_metadata_fields"]
         # )
         date_key = list(query["created_date"].keys())[0]
         query["created_date"][date_key] = self.date_to_epoch(

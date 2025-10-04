@@ -33,13 +33,12 @@ parser.add_argument("query", type=str, help="questions about simba's health")
 parser.add_argument(
     "--reindex", action="store_true", help="re-index the simba documents"
 )
-parser.add_argument(
-        "--index", help="index a file"
-)
+parser.add_argument("--index", help="index a file")
 
 ppngx = PaperlessNGXService()
 
 openai_client = OpenAI()
+
 
 def index_using_pdf_llm():
     files = ppngx.get_data()
@@ -79,13 +78,14 @@ def chunk_data(docs: list[dict[str, Union[str, Any]]], collection):
     for index, text in enumerate(texts):
         print(docs[index]["original_file_name"])
         metadata = {
-             "created_date": date_to_epoch(docs[index]["created_date"]),
-             "filename": docs[index]["original_file_name"]
+            "created_date": date_to_epoch(docs[index]["created_date"]),
+            "filename": docs[index]["original_file_name"],
         }
         chunker.chunk_document(
             document=text,
             metadata=metadata,
         )
+
 
 def chunk_text(texts: list[str], collection):
     chunker = Chunker(collection)
@@ -97,9 +97,11 @@ def chunk_text(texts: list[str], collection):
             metadata=metadata,
         )
 
+
 def consult_oracle(input: str, collection):
     print(input)
     import time
+
     start_time = time.time()
 
     # Ask
@@ -122,7 +124,7 @@ def consult_oracle(input: str, collection):
     results = collection.query(
         query_texts=[input],
         query_embeddings=embeddings,
-        #where=metadata_filter,
+        # where=metadata_filter,
     )
     print(results)
     query_end = time.time()
@@ -132,15 +134,21 @@ def consult_oracle(input: str, collection):
     print("Starting LLM generation")
     llm_start = time.time()
     # output = ollama_client.generate(
-        # model="gemma3n:e4b",
-        # prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
+    # model="gemma3n:e4b",
+    # prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
     # )
     response = openai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that understands veterinary terms."},
-            {"role": "user", "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}"}
-        ]
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that understands veterinary terms.",
+            },
+            {
+                "role": "user",
+                "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}",
+            },
+        ],
     )
     llm_end = time.time()
     print(f"LLM generation took {llm_end - llm_start:.2f} seconds")
@@ -181,7 +189,6 @@ if __name__ == "__main__":
         print("Done chunking documents")
         # index_using_pdf_llm()
 
-
     if args.index:
         with open(args.index) as file:
             extension = args.index.split(".")[-1]
@@ -196,11 +203,11 @@ if __name__ == "__main__":
 
     if args.query:
         print("Consulting oracle ...")
-        print(consult_oracle(
-            input=args.query,
-            collection=simba_docs,
-        ))
+        print(
+            consult_oracle(
+                input=args.query,
+                collection=simba_docs,
+            )
+        )
     else:
         print("please provide a query")
-
-
