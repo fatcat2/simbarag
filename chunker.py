@@ -3,14 +3,18 @@ from math import ceil
 import re
 from typing import Union
 from uuid import UUID, uuid4
-
+from ollama import Client
 from chromadb.utils.embedding_functions.openai_embedding_function import (
     OpenAIEmbeddingFunction,
 )
 from dotenv import load_dotenv
 
 
+USE_OPENAI = os.getenv("OPENAI_API_KEY") != None
+
 load_dotenv()
+
+ollama_client = Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
 
 
 def remove_headers_footers(text, header_patterns=None, footer_patterns=None):
@@ -87,6 +91,17 @@ class Chunker:
 
     def __init__(self, collection) -> None:
         self.collection = collection
+
+    def embedding_fx(self, inputs):
+        if USE_OPENAI:
+            openai_embedding_fx = OpenAIEmbeddingFunction(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                model_name="text-embedding-3-small",
+            )
+            return openai_embedding_fx(inputs)
+        else:
+            response = ollama_client.embed(model="mxbai-embed-large", input=inputs[0])
+            return response["embeddings"]
 
     def chunk_document(
         self,

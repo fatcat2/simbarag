@@ -18,11 +18,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+USE_OPENAI = os.getenv("OPENAI_API_KEY") != None
+
 # Configure ollama client with URL from environment or default to localhost
 ollama_client = ollama.Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
 
 client = chromadb.PersistentClient(path=os.getenv("CHROMADB_PATH", ""))
-simba_docs = client.get_or_create_collection(name="simba_docs")
+simba_docs = client.get_or_create_collection(name="simba_docs2")
 feline_vet_lookup = client.get_or_create_collection(name="feline_vet_lookup")
 
 parser = argparse.ArgumentParser(
@@ -55,7 +57,6 @@ def index_using_pdf_llm():
 
 def date_to_epoch(date_str: str) -> float:
     split_date = date_str.split("-")
-    print(split_date)
     date = datetime.datetime(
         int(split_date[0]),
         int(split_date[1]),
@@ -73,10 +74,8 @@ def chunk_data(docs: list[dict[str, Union[str, Any]]], collection):
     chunker = Chunker(collection)
 
     print(f"chunking {len(docs)} documents")
-    print(docs)
     texts: list[str] = [doc["content"] for doc in docs]
     for index, text in enumerate(texts):
-        print(docs[index]["original_file_name"])
         metadata = {
             "created_date": date_to_epoch(docs[index]["created_date"]),
             "filename": docs[index]["original_file_name"],
@@ -101,6 +100,7 @@ def chunk_text(texts: list[str], collection):
 def consult_oracle(input: str, collection):
     print(input)
     import time
+    chunker = Chunker(collection)
 
     start_time = time.time()
 
@@ -115,7 +115,7 @@ def consult_oracle(input: str, collection):
 
     print("Starting embedding generation")
     embedding_start = time.time()
-    embeddings = Chunker.embedding_fx(input=[input])
+    embeddings = chunker.embedding_fx(inputs=[input])
     embedding_end = time.time()
     print(f"Embedding generation took {embedding_end - embedding_start:.2f} seconds")
 
@@ -126,37 +126,40 @@ def consult_oracle(input: str, collection):
         query_embeddings=embeddings,
         # where=metadata_filter,
     )
-    print(results)
     query_end = time.time()
     print(f"Collection query took {query_end - query_start:.2f} seconds")
 
     # Generate
     print("Starting LLM generation")
     llm_start = time.time()
-    # output = ollama_client.generate(
-    # model="gemma3n:e4b",
-    # prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
-    # )
-    response = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that understands veterinary terms.",
-            },
-            {
-                "role": "user",
-                "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}",
-            },
-        ],
-    )
+    if USE_OPENAI:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that understands veterinary terms.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}",
+                },
+            ],
+        )
+        output= response.choices[0].message.content
+    else:
+        response = ollama_client.generate(
+            model="gemma3:4b",
+            prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
+        )
+        output = response["response"]
     llm_end = time.time()
     print(f"LLM generation took {llm_end - llm_start:.2f} seconds")
 
     total_time = time.time() - start_time
     print(f"Total consult_oracle execution took {total_time:.2f} seconds")
 
-    return response.choices[0].message.content
+    return output
 
 
 def paperless_workflow(input):
@@ -181,7 +184,6 @@ if __name__ == "__main__":
         print("Fetching documents from Paperless-NGX")
         ppngx = PaperlessNGXService()
         docs = ppngx.get_data()
-        print(docs)
         print(f"Fetched {len(docs)} documents")
         #
         print("Chunking documents now ...")
@@ -192,7 +194,6 @@ if __name__ == "__main__":
     if args.index:
         with open(args.index) as file:
             extension = args.index.split(".")[-1]
-
             if extension == "pdf":
                 pdf_path = ppngx.download_pdf_from_id(id=document_id)
                 image_paths = pdf_to_image(filepath=pdf_path)

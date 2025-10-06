@@ -45,7 +45,6 @@ the date range the user is trying to query. You should return it as a JSON. The 
 
 If the created_date cannot be ascertained, set it to epoch time start.
 
-
 You have several operators at your disposal:
 - $gt: greater than
 - $gte: greater than or equal
@@ -83,6 +82,8 @@ document_types:
 Only return the extracted metadata fields. Make sure the extracted metadata fields are valid JSON
 """
 
+USE_OPENAI = os.getenv("OPENAI_API_KEY", None) != None
+
 
 class QueryGenerator:
     def __init__(self) -> None:
@@ -102,38 +103,38 @@ class QueryGenerator:
         return date.timestamp()
 
     def get_query(self, input: str):
-        client = OpenAI()
-        print(input)
-        response = client.responses.parse(
-            model="gpt-4o",
-            input=[
-                {"role": "system", "content": PROMPT},
-                {"role": "user", "content": input},
-            ],
-            text_format=Time,
-        )
-        print(response)
-        query = json.loads(response.output_parsed.extracted_metadata_fields)
+        if USE_OPENAI:
+            client = OpenAI()
+            response = client.responses.parse(
+                model="gpt-4o",
+                input=[
+                    {"role": "system", "content": PROMPT},
+                    {"role": "user", "content": input},
+                ],
+                text_format=GeneratedQuery,
+            )
+            print(response.output)
+            query = json.loads(response.output_parsed.extracted_metadata_fields)
+        else:
+            response: ChatResponse = ollama_client.chat(
+                model="gemma3n:e4b",
+                messages=[
+                    {"role": "system", "content": PROMPT},
+                    {"role": "user", "content": input},
+                ],
+                format=GeneratedQuery.model_json_schema(),
+            )
 
-        # response: ChatResponse = ollama_client.chat(
-        # model="gemma3n:e4b",
-        # messages=[
-        # {"role": "system", "content": PROMPT},
-        # {"role": "user", "content": input},
-        # ],
-        # format=GeneratedQuery.model_json_schema(),
-        # )
+            query = json.loads(
+                json.loads(response["message"]["content"])["extracted_metadata_fields"]
+            )
+            date_key = list(query["created_date"].keys())[0]
+            query["created_date"][date_key] = self.date_to_epoch(
+                query["created_date"][date_key]
+            )
 
-        # query = json.loads(
-        # json.loads(response["message"]["content"])["extracted_metadata_fields"]
-        # )
-        date_key = list(query["created_date"].keys())[0]
-        query["created_date"][date_key] = self.date_to_epoch(
-            query["created_date"][date_key]
-        )
-
-        if "$" not in date_key:
-            query["created_date"]["$" + date_key] = query["created_date"][date_key]
+            if "$" not in date_key:
+                query["created_date"]["$" + date_key] = query["created_date"][date_key]
 
         return query
 

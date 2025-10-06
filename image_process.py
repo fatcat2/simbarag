@@ -25,22 +25,24 @@ parser.add_argument("filepath")
 
 client = Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
 
+
 class SimbaImageDescription(BaseModel):
     image_date: str
     description: str
+
 
 def describe_simba_image(input):
     logging.info("Opening image of Simba ...")
     if "heic" in input.lower() or "heif" in input.lower():
         new_filepath = input.split(".")[0] + ".jpg"
         img = Image.open(input)
-        img.save(new_filepath, 'JPEG')
+        img.save(new_filepath, "JPEG")
         logging.info("Extracting EXIF...")
         exif = {
             ExifTags.TAGS[k]: v for k, v in img.getexif().items() if k in ExifTags.TAGS
         }
         img = Image.open(new_filepath)
-        input=new_filepath
+        input = new_filepath
     else:
         img = Image.open(input)
 
@@ -66,7 +68,7 @@ def describe_simba_image(input):
             },
             {"role": "user", "content": prompt, "images": [input]},
         ],
-        format=SimbaImageDescription.model_json_schema()
+        format=SimbaImageDescription.model_json_schema(),
     )
 
     result = SimbaImageDescription.model_validate_json(response["message"]["content"])

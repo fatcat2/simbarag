@@ -1,10 +1,13 @@
 import os
 import tempfile
 import httpx
+import logging
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 
 class PaperlessNGXService:
@@ -17,7 +20,16 @@ class PaperlessNGXService:
     def get_data(self):
         print(f"Getting data from: {self.url}")
         r = httpx.get(self.url, headers=self.headers)
-        return r.json()["results"]
+        results = r.json()["results"]
+
+        nextLink = r.json().get("next")
+
+        while nextLink:
+            r = httpx.get(nextLink, headers=self.headers)
+            results += r.json()["results"]
+            nextLink = r.json().get("next")
+
+        return results
 
     def get_doc_by_id(self, doc_id: int):
         url = f"http://{os.getenv('BASE_URL')}/api/documents/{doc_id}/"
@@ -45,15 +57,15 @@ class PaperlessNGXService:
 
     def upload_description(self, description_filepath, file, title, exif_date: str):
         POST_URL = f"http://{os.getenv('BASE_URL')}/api/documents/post_document/"
-        files = {'document': ('description_filepath', file, 'application/txt')}
+        files = {"document": ("description_filepath", file, "application/txt")}
         data = {
-                "title": title,
-                "create": exif_date,
-                "document_type": 3
-                "tags": [7]
+            "title": title,
+            "create": exif_date,
+            "document_type": 3,
+            "tags": [7],
         }
 
-        r= httpx.post(POST_URL, headers=self.headers, data=data, files=files)
+        r = httpx.post(POST_URL, headers=self.headers, data=data, files=files)
         r.raise_for_status()
 
 
