@@ -18,7 +18,8 @@ class LLMClient:
             )
             self.PROVIDER = "ollama"
             logging.info("Using Ollama as LLM backend")
-        except:
+        except Exception as e:
+            print(e)
             self.openai_client = OpenAI()
             self.PROVIDER = "openai"
             logging.info("Using OpenAI as LLM backend")
