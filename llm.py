@@ -29,13 +29,13 @@ class LLMClient:
         system_prompt: str,
     ):
         if self.PROVIDER == "ollama":
-            response = ollama_client.chat(
+            response = self.ollama_client.chat(
                 model="gemma3:4b",
                 prompt=prompt,
             )
             output = response["response"]
         elif self.PROVIDER == "openai":
-            response = openai_client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
