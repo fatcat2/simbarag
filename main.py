@@ -98,7 +98,6 @@ def chunk_text(texts: list[str], collection):
 
 
 def consult_oracle(input: str, collection):
-print(input)
     import time
 
     chunker = Chunker(collection)
