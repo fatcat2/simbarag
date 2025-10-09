@@ -8,6 +8,7 @@ from chromadb.utils.embedding_functions.openai_embedding_function import (
     OpenAIEmbeddingFunction,
 )
 from dotenv import load_dotenv
+from llm import LLMClient
 
 
 USE_OPENAI = os.getenv("OPENAI_API_KEY") != None
@@ -91,9 +92,10 @@ class Chunker:
 
     def __init__(self, collection) -> None:
         self.collection = collection
+        self.llm_client = LLMClient()
 
     def embedding_fx(self, inputs):
-        if USE_OPENAI:
+        if self.llm_client.PROVIDER == "openai":
             openai_embedding_fx = OpenAIEmbeddingFunction(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model_name="text-embedding-3-small",

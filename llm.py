@@ -16,7 +16,7 @@ class LLMClient:
             self.ollama_client = Client(
                 host=os.getenv("OLLAMA_URL", "http://localhost:11434")
             )
-            client.chat(
+            self.ollama_client.chat(
                 model="gemma3:4b", messages=[{"role": "system", "content": "test"}]
             )
             self.PROVIDER = "ollama"
@@ -35,9 +35,16 @@ class LLMClient:
         if self.PROVIDER == "ollama":
             response = self.ollama_client.chat(
                 model="gemma3:4b",
-                prompt=prompt,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt,
+                    },
+                    {"role": "user", "content": prompt},
+                ],
             )
-            output = response["response"]
+            print(response)
+            output = response.message.content
         elif self.PROVIDER == "openai":
             response = self.openai_client.responses.create(
                 model="gpt-4o-mini",
@@ -50,6 +57,8 @@ class LLMClient:
                 ],
             )
             output = response.output_text
+
+        return output
 
 
 if __name__ == "__main__":
