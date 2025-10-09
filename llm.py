@@ -36,9 +36,9 @@ class LLMClient:
             )
             output = response["response"]
         elif self.PROVIDER == "openai":
-            response = self.openai_client.chat.completions.create(
+            response = self.openai_client.responses.create(
                 model="gpt-4o-mini",
-                messages=[
+                input=[
                     {
                         "role": "system",
                         "content": system_prompt,
@@ -49,7 +49,7 @@ class LLMClient:
                     },
                 ],
             )
-            output = response.choices[0].message.content
+            output = response.output_text
 
 
 if __name__ == "__main__":
