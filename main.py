@@ -13,6 +13,7 @@ from request import PaperlessNGXService
 from chunker import Chunker
 from query import QueryGenerator
 from cleaner import pdf_to_image, summarize_pdf_image
+from llm import LLMClient
 
 from dotenv import load_dotenv
 
@@ -39,8 +40,7 @@ parser.add_argument("--index", help="index a file")
 
 ppngx = PaperlessNGXService()
 
-openai_client = OpenAI()
-
+llm_client = LLMClient()
 
 def index_using_pdf_llm():
     files = ppngx.get_data()
@@ -98,8 +98,9 @@ def chunk_text(texts: list[str], collection):
 
 
 def consult_oracle(input: str, collection):
-    print(input)
+print(input)
     import time
+
     chunker = Chunker(collection)
 
     start_time = time.time()
@@ -132,27 +133,9 @@ def consult_oracle(input: str, collection):
     # Generate
     print("Starting LLM generation")
     llm_start = time.time()
-    if USE_OPENAI:
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that understands veterinary terms.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}",
-                },
-            ],
-        )
-        output= response.choices[0].message.content
-    else:
-        response = ollama_client.generate(
-            model="gemma3:4b",
-            prompt=f"You are a helpful assistant that understandings veterinary terms. Using the following data, help answer the user's query by providing as many details as possible.  Using this data: {results}. Respond to this prompt: {input}",
-        )
-        output = response["response"]
+    system_prompt = "You are a helpful assistant that understands veterinary terms."
+    prompt = f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}"
+    output = llm_client.chat(prompt=prompt, system_prompt=system_prompt)
     llm_end = time.time()
     print(f"LLM generation took {llm_end - llm_start:.2f} seconds")
 
