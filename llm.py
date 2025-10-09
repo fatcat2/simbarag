@@ -9,10 +9,13 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 class LLMClient:
     def __init__(self):
         try:
-            self.ollama_client = ollama.Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
+            self.ollama_client = Client(
+                host=os.getenv("OLLAMA_URL", "http://localhost:11434")
+            )
             client.chat(
                 model="gemma3:4b", messages=[{"role": "system", "content": "test"}]
             )
@@ -43,10 +46,7 @@ class LLMClient:
                         "role": "system",
                         "content": system_prompt,
                     },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    },
+                    {"role": "user", "content": prompt},
                 ],
             )
             output = response.output_text

@@ -42,6 +42,7 @@ ppngx = PaperlessNGXService()
 
 llm_client = LLMClient()
 
+
 def index_using_pdf_llm():
     files = ppngx.get_data()
     for file in files:
