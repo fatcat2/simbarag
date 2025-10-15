@@ -3,8 +3,6 @@ import os
 from ollama import Client
 from openai import OpenAI
 
-import typing
-
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +12,7 @@ class LLMClient:
     def __init__(self):
         try:
             self.ollama_client = Client(
-                host=os.getenv("OLLAMA_URL", "http://localhost:11434")
+                host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
             )
             self.ollama_client.chat(
                 model="gemma3:4b", messages=[{"role": "system", "content": "test"}]

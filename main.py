@@ -7,12 +7,10 @@ from typing import Any, Union
 import argparse
 import chromadb
 import ollama
-from openai import OpenAI
 
 
 from request import PaperlessNGXService
 from chunker import Chunker
-from query import QueryGenerator
 from cleaner import pdf_to_image, summarize_pdf_image
 from llm import LLMClient
 
@@ -21,13 +19,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-USE_OPENAI = os.getenv("OPENAI_API_KEY") != None
-
 # Configure ollama client with URL from environment or default to localhost
-ollama_client = ollama.Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
+ollama_client = ollama.Client(
+    host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
+)
 
 client = chromadb.PersistentClient(path=os.getenv("CHROMADB_PATH", ""))
-simba_docs = client.get_or_create_collection(name="simba_docs3")
+simba_docs = client.get_or_create_collection(name="simba_docs2")
 feline_vet_lookup = client.get_or_create_collection(name="feline_vet_lookup")
 
 parser = argparse.ArgumentParser(
@@ -46,6 +44,7 @@ llm_client = LLMClient()
 
 
 def index_using_pdf_llm():
+    logging.info("reindex data...")
     files = ppngx.get_data()
     for file in files:
         document_id = file["id"]
@@ -72,28 +71,35 @@ def date_to_epoch(date_str: str) -> float:
     return date.timestamp()
 
 
-def chunk_data(docs: list[dict[str, Union[str, Any]]], collection):
+def chunk_data(docs: list[dict[str, Union[str, Any]]], collection, doctypes):
     # Step 2: Create chunks
     chunker = Chunker(collection)
 
     print(f"chunking {len(docs)} documents")
     texts: list[str] = [doc["content"] for doc in docs]
-    with sqlite3.connect("visited.db") as conn: 
+    with sqlite3.connect("visited.db") as conn:
         to_insert = []
         c = conn.cursor()
         for index, text in enumerate(texts):
             metadata = {
                 "created_date": date_to_epoch(docs[index]["created_date"]),
                 "filename": docs[index]["original_file_name"],
+                "document_type": doctypes.get(docs[index]["document_type"], ""),
             }
+
+            if doctypes:
+                metadata["type"] = doctypes.get(docs[index]["document_type"])
+
             chunker.chunk_document(
                 document=text,
                 metadata=metadata,
             )
             to_insert.append((docs[index]["id"],))
 
-        c.executemany("INSERT INTO indexed_documents (paperless_id) values (?)", to_insert)
-
+        c.executemany(
+            "INSERT INTO indexed_documents (paperless_id) values (?)", to_insert
+        )
+        conn.commit()
 
 
 def chunk_text(texts: list[str], collection):
@@ -169,17 +175,19 @@ def consult_simba_oracle(input: str):
         collection=simba_docs,
     )
 
+
 def filter_indexed_files(docs):
     with sqlite3.connect("visited.db") as conn:
         c = conn.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS indexed_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, paperless_id INTEGER)")
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS indexed_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, paperless_id INTEGER)"
+        )
         c.execute("SELECT paperless_id FROM indexed_documents")
         rows = c.fetchall()
         conn.commit()
 
     visited = {row[0] for row in rows}
     return [doc for doc in docs if doc["id"] not in visited]
-
 
 
 if __name__ == "__main__":
@@ -192,20 +200,22 @@ if __name__ == "__main__":
         print(f"Fetched {len(docs)} documents")
         #
         print("Chunking documents now ...")
-        chunk_data(docs, collection=simba_docs)
+        tag_lookup = ppngx.get_tags()
+        doctype_lookup = ppngx.get_doctypes()
+        chunk_data(docs, collection=simba_docs, doctypes=doctype_lookup)
         print("Done chunking documents")
         # index_using_pdf_llm()
 
-    if args.index:
-        with open(args.index) as file:
-            extension = args.index.split(".")[-1]
-            if extension == "pdf":
-                pdf_path = ppngx.download_pdf_from_id(id=document_id)
-                image_paths = pdf_to_image(filepath=pdf_path)
-                print(f"summarizing {file}")
-                generated_summary = summarize_pdf_image(filepaths=image_paths)
-            elif extension in [".md", ".txt"]:
-                chunk_text(texts=[file.readall()], collection=simba_docs)
+    # if args.index:
+    # with open(args.index) as file:
+    # extension = args.index.split(".")[-1]
+    # if extension == "pdf":
+    # pdf_path = ppngx.download_pdf_from_id(id=document_id)
+    # image_paths = pdf_to_image(filepath=pdf_path)
+    # print(f"summarizing {file}")
+    # generated_summary = summarize_pdf_image(filepaths=image_paths)
+    # elif extension in [".md", ".txt"]:
+    # chunk_text(texts=[file.readall()], collection=simba_docs)
 
     if args.query:
         print("Consulting oracle ...")

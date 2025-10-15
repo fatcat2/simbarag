@@ -13,7 +13,9 @@ from llm import LLMClient
 
 load_dotenv()
 
-ollama_client = Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
+ollama_client = Client(
+    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"), timeout=10.0
+)
 
 
 def remove_headers_footers(text, header_patterns=None, footer_patterns=None):

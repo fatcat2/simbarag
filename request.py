@@ -14,7 +14,7 @@ class PaperlessNGXService:
     def __init__(self):
         self.base_url = os.getenv("BASE_URL")
         self.token = os.getenv("PAPERLESS_TOKEN")
-        self.url = f"http://{os.getenv('BASE_URL')}/api/documents/?query=simba"
+        self.url = f"http://{os.getenv('BASE_URL')}/api/documents/?tags__id=8"
         self.headers = {"Authorization": f"Token {os.getenv('PAPERLESS_TOKEN')}"}
 
     def get_data(self):
@@ -67,6 +67,18 @@ class PaperlessNGXService:
 
         r = httpx.post(POST_URL, headers=self.headers, data=data, files=files)
         r.raise_for_status()
+
+    def get_tags(self):
+        GET_URL = f"http://{os.getenv('BASE_URL')}/api/tags/"
+        r = httpx.get(GET_URL, headers=self.headers)
+        data = r.json()
+        return {tag["id"]: tag["name"] for tag in data["results"]}
+
+    def get_doctypes(self):
+        GET_URL = f"http://{os.getenv('BASE_URL')}/api/document_types/"
+        r = httpx.get(GET_URL, headers=self.headers)
+        data = r.json()
+        return {doctype["id"]: doctype["name"] for doctype in data["results"]}
 
 
 if __name__ == "__main__":

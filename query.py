@@ -2,7 +2,7 @@ import json
 import os
 from typing import Literal
 import datetime
-from ollama import chat, ChatResponse, Client
+from ollama import Client
 
 from openai import OpenAI
 
@@ -36,6 +36,20 @@ class GeneratedQuery(BaseModel):
 
 class Time(BaseModel):
     time: int
+
+
+DOCTYPE_OPTIONS = [
+    "Bill",
+    "Image Description",
+    "Insurance",
+    "Medical Record",
+    "Documentation",
+    "Letter",
+]
+
+
+class DocumentType(BaseModel):
+    type: list[str] = Field(description="type of document", enum=DOCTYPE_OPTIONS)
 
 
 PROMPT = """
@@ -82,7 +96,8 @@ document_types:
 Only return the extracted metadata fields. Make sure the extracted metadata fields are valid JSON
 """
 
-USE_OPENAI = os.getenv("OPENAI_API_KEY", None) != None
+
+DOCTYPE_PROMPT = f"You are an information specialist that processes user queries. A query can have two tags attached from the following options. Based on the query, determine which of the following options is most appropriate: {','.join(DOCTYPE_OPTIONS)}"
 
 
 class QueryGenerator:
@@ -102,43 +117,67 @@ class QueryGenerator:
 
         return date.timestamp()
 
+    def get_doctype_query(self, input: str):
+        print(DOCTYPE_PROMPT)
+        client = OpenAI()
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an information specialist that is really good at deciding what tags a query should have",
+                },
+                {"role": "user", "content": DOCTYPE_PROMPT + " " + input},
+            ],
+            model="gpt-4o",
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "document_type",
+                    "schema": DocumentType.model_json_schema(),
+                },
+            },
+        )
+
+        response_json_str = response.choices[0].message.content
+        type_data = json.loads(response_json_str)
+        print(type_data)
+        return type_data
+
     def get_query(self, input: str):
-        if USE_OPENAI:
-            client = OpenAI()
-            response = client.responses.parse(
-                model="gpt-4o",
-                input=[
-                    {"role": "system", "content": PROMPT},
-                    {"role": "user", "content": input},
-                ],
-                text_format=GeneratedQuery,
-            )
-            print(response.output)
-            query = json.loads(response.output_parsed.extracted_metadata_fields)
-        else:
-            response: ChatResponse = ollama_client.chat(
-                model="gemma3n:e4b",
-                messages=[
-                    {"role": "system", "content": PROMPT},
-                    {"role": "user", "content": input},
-                ],
-                format=GeneratedQuery.model_json_schema(),
-            )
+        client = OpenAI()
+        response = client.responses.parse(
+            model="gpt-4o",
+            input=[
+                {"role": "system", "content": PROMPT},
+                {"role": "user", "content": input},
+            ],
+            text_format=GeneratedQuery,
+        )
+        print(response.output)
+        query = json.loads(response.output_parsed.extracted_metadata_fields)
+        # response: ChatResponse = ollama_client.chat(
+        # model="gemma3n:e4b",
+        # messages=[
+        # {"role": "system", "content": PROMPT},
+        # {"role": "user", "content": input},
+        # ],
+        # format=GeneratedQuery.model_json_schema(),
+        # )
 
-            query = json.loads(
-                json.loads(response["message"]["content"])["extracted_metadata_fields"]
-            )
-            date_key = list(query["created_date"].keys())[0]
-            query["created_date"][date_key] = self.date_to_epoch(
-                query["created_date"][date_key]
-            )
+        # query = json.loads(
+        # json.loads(response["message"]["content"])["extracted_metadata_fields"]
+        # )
+        # date_key = list(query["created_date"].keys())[0]
+        # query["created_date"][date_key] = self.date_to_epoch(
+        # query["created_date"][date_key]
+        # )
 
-            if "$" not in date_key:
-                query["created_date"]["$" + date_key] = query["created_date"][date_key]
+        # if "$" not in date_key:
+        # query["created_date"]["$" + date_key] = query["created_date"][date_key]
 
         return query
 
 
 if __name__ == "__main__":
     qg = QueryGenerator()
-    print(qg.get_query("How heavy is Simba?"))
+    print(qg.get_doctype_query("How heavy is Simba?"))
