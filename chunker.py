@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 from llm import LLMClient
 
 
-USE_OPENAI = os.getenv("OPENAI_API_KEY") != None
-
 load_dotenv()
 
 ollama_client = Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
@@ -85,25 +83,16 @@ class Chunk:
 
 
 class Chunker:
-    embedding_fx = OpenAIEmbeddingFunction(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        model_name="text-embedding-3-small",
-    )
-
     def __init__(self, collection) -> None:
         self.collection = collection
         self.llm_client = LLMClient()
 
     def embedding_fx(self, inputs):
-        if self.llm_client.PROVIDER == "openai":
-            openai_embedding_fx = OpenAIEmbeddingFunction(
-                api_key=os.getenv("OPENAI_API_KEY"),
-                model_name="text-embedding-3-small",
-            )
-            return openai_embedding_fx(inputs)
-        else:
-            response = ollama_client.embed(model="mxbai-embed-large", input=inputs[0])
-            return response["embeddings"]
+        openai_embedding_fx = OpenAIEmbeddingFunction(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model_name="text-embedding-3-small",
+        )
+        return openai_embedding_fx(inputs)
 
     def chunk_document(
         self,
