@@ -50,7 +50,7 @@ def index_using_pdf_llm(doctypes):
         document_id: int = file["id"]
         pdf_path = ppngx.download_pdf_from_id(id=document_id)
         image_paths = pdf_to_image(filepath=pdf_path)
-        print(f"summarizing {file}")
+        logging.info(f"summarizing {file}")
         generated_summary = summarize_pdf_image(filepaths=image_paths)
         file["content"] = generated_summary
 
@@ -75,7 +75,7 @@ def chunk_data(docs, collection, doctypes):
     # Step 2: Create chunks
     chunker = Chunker(collection)
 
-    print(f"chunking {len(docs)} documents")
+    logging.info(f"chunking {len(docs)} documents")
     texts: list[str] = [doc["content"] for doc in docs]
     with sqlite3.connect("visited.db") as conn:
         to_insert = []
@@ -121,44 +121,45 @@ def consult_oracle(input: str, collection):
     start_time = time.time()
 
     # Ask
-    print("Starting query generation")
+    logging.info("Starting query generation")
     qg_start = time.time()
     qg = QueryGenerator()
     doctype_query = qg.get_doctype_query(input=input)
     # metadata_filter = qg.get_query(input)
     metadata_filter = {**doctype_query}
-    print(metadata_filter)
+    logging.info(metadata_filter)
     qg_end = time.time()
-    print(f"Query generation took {qg_end - qg_start:.2f} seconds")
+    logging.info(f"Query generation took {qg_end - qg_start:.2f} seconds")
 
-    print("Starting embedding generation")
+    logging.info("Starting embedding generation")
     embedding_start = time.time()
     embeddings = chunker.embedding_fx(inputs=[input])
     embedding_end = time.time()
-    print(f"Embedding generation took {embedding_end - embedding_start:.2f} seconds")
+    logging.info(
+        f"Embedding generation took {embedding_end - embedding_start:.2f} seconds"
+    )
 
-    print("Starting collection query")
+    logging.info("Starting collection query")
     query_start = time.time()
     results = collection.query(
         query_texts=[input],
         query_embeddings=embeddings,
         where=metadata_filter,
     )
-    print(results)
     query_end = time.time()
-    print(f"Collection query took {query_end - query_start:.2f} seconds")
+    logging.info(f"Collection query took {query_end - query_start:.2f} seconds")
 
     # Generate
-    print("Starting LLM generation")
+    logging.info("Starting LLM generation")
     llm_start = time.time()
     system_prompt = "You are a helpful assistant that understands veterinary terms."
     prompt = f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}"
     output = llm_client.chat(prompt=prompt, system_prompt=system_prompt)
     llm_end = time.time()
-    print(f"LLM generation took {llm_end - llm_start:.2f} seconds")
+    logging.info(f"LLM generation took {llm_end - llm_start:.2f} seconds")
 
     total_time = time.time() - start_time
-    print(f"Total consult_oracle execution took {total_time:.2f} seconds")
+    logging.info(f"Total consult_oracle execution took {total_time:.2f} seconds")
 
     return output
 
@@ -200,11 +201,11 @@ if __name__ == "__main__":
             c = conn.cursor()
             c.execute("DELETE FROM indexed_documents")
 
-        print("Fetching documents from Paperless-NGX")
+        logging.info("Fetching documents from Paperless-NGX")
         ppngx = PaperlessNGXService()
         docs = ppngx.get_data()
         docs = filter_indexed_files(docs)
-        print(f"Fetched {len(docs)} documents")
+        logging.info(f"Fetched {len(docs)} documents")
 
         # Delete all chromadb data
         ids = simba_docs.get(ids=None, limit=None, offset=0)
@@ -213,11 +214,11 @@ if __name__ == "__main__":
             simba_docs.delete(ids=all_ids)
 
         # Chunk documents
-        print("Chunking documents now ...")
+        logging.info("Chunking documents now ...")
         tag_lookup = ppngx.get_tags()
         doctype_lookup = ppngx.get_doctypes()
         chunk_data(docs, collection=simba_docs, doctypes=doctype_lookup)
-        print("Done chunking documents")
+        logging.info("Done chunking documents")
 
     # if args.index:
     # with open(args.index) as file:
@@ -231,7 +232,7 @@ if __name__ == "__main__":
     # chunk_text(texts=[file.readall()], collection=simba_docs)
 
     if args.query:
-        print("Consulting oracle ...")
+        logging.info("Consulting oracle ...")
         print(
             consult_oracle(
                 input=args.query,
@@ -239,4 +240,4 @@ if __name__ == "__main__":
             )
         )
     else:
-        print("please provide a query")
+        logging.info("please provide a query")
