@@ -9,7 +9,9 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 # Configure ollama client with URL from environment or default to localhost
-ollama_client = Client(host=os.getenv("OLLAMA_URL", "http://localhost:11434"))
+ollama_client = Client(
+    host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
+)
 
 # This uses inferred filters — which means using LLM to create the metadata filters
 
@@ -53,8 +55,8 @@ class DocumentType(BaseModel):
 
 
 PROMPT = """
-You are an information specialist that processes user queries. The current year is 2025. The user queries are all about 
-a cat, Simba, and its records. The types of records are listed below. Using the query, extract the 
+You are an information specialist that processes user queries. The current year is 2025. The user queries are all about
+a cat, Simba, and its records. The types of records are listed below. Using the query, extract the
 the date range the user is trying to query. You should return it as a JSON. The date tag is created_date. Return the date in epoch time.
 
 If the created_date cannot be ascertained, set it to epoch time start.
@@ -97,7 +99,17 @@ Only return the extracted metadata fields. Make sure the extracted metadata fiel
 """
 
 
-DOCTYPE_PROMPT = f"You are an information specialist that processes user queries. A query can have two tags attached from the following options. Based on the query, determine which of the following options is most appropriate: {','.join(DOCTYPE_OPTIONS)}"
+DOCTYPE_PROMPT = f"""You are an information specialist that processes user queries. A query can have two tags attached from the following options. Based on the query, determine which of the following options is most appropriate: {",".join(DOCTYPE_OPTIONS)}
+
+### Example 1
+Query: "Who is Simba's current vet?"
+Tags: ["Bill", "Medical Record"]
+
+
+### Example 2
+Query: "Who does Simba know?"
+Tags: ["Letter", "Documentation"]
+"""
 
 
 class QueryGenerator:
@@ -118,7 +130,6 @@ class QueryGenerator:
         return date.timestamp()
 
     def get_doctype_query(self, input: str):
-        print(DOCTYPE_PROMPT)
         client = OpenAI()
         response = client.chat.completions.create(
             messages=[
@@ -140,8 +151,8 @@ class QueryGenerator:
 
         response_json_str = response.choices[0].message.content
         type_data = json.loads(response_json_str)
-        print(type_data)
-        return type_data
+        metadata_query = {"document_type": {"$in": type_data["type"]}}
+        return metadata_query
 
     def get_query(self, input: str):
         client = OpenAI()
