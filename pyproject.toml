@@ -16,4 +16,12 @@ dependencies = [
     "pymupdf>=1.24.0",
     "black>=25.9.0",
     "pillow-heif>=1.1.1",
+    "flask-jwt-extended>=4.7.1",
+    "bcrypt>=5.0.0",
+    "pony>=0.7.19",
+    "flask-login>=0.6.3",
+    "quart>=0.20.0",
+    "tortoise-orm>=0.25.1",
+    "quart-jwt-extended>=0.1.0",
+    "pre-commit>=4.3.0",
 ]

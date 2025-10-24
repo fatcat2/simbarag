@@ -222,14 +222,14 @@ if __name__ == "__main__":
 
     # if args.index:
     # with open(args.index) as file:
-    # extension = args.index.split(".")[-1]
-    # if extension == "pdf":
-    # pdf_path = ppngx.download_pdf_from_id(id=document_id)
-    # image_paths = pdf_to_image(filepath=pdf_path)
-    # print(f"summarizing {file}")
-    # generated_summary = summarize_pdf_image(filepaths=image_paths)
-    # elif extension in [".md", ".txt"]:
-    # chunk_text(texts=[file.readall()], collection=simba_docs)
+    #     extension = args.index.split(".")[-1]
+    #     if extension == "pdf":
+    #         pdf_path = ppngx.download_pdf_from_id(id=document_id)
+    #         image_paths = pdf_to_image(filepath=pdf_path)
+    #         print(f"summarizing {file}")
+    #         generated_summary = summarize_pdf_image(filepaths=image_paths)
+    #     elif extension in [".md", ".txt"]:
+    #         chunk_text(texts=[file.readall()], collection=simba_docs)
 
     if args.query:
         logging.info("Consulting oracle ...")
