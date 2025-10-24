@@ -4,8 +4,13 @@ from ollama import Client
 from openai import OpenAI
 
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
+
+TRY_OLLAMA = os.getenv("TRY_OLLAMA", False)
 
 
 class LLMClient:
@@ -30,31 +35,35 @@ class LLMClient:
         prompt: str,
         system_prompt: str,
     ):
+        # Instituting a fallback if my gaming PC is not on
         if self.PROVIDER == "ollama":
-            response = self.ollama_client.chat(
-                model="gemma3:4b",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt,
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            print(response)
-            output = response.message.content
-        elif self.PROVIDER == "openai":
-            response = self.openai_client.responses.create(
-                model="gpt-4o-mini",
-                input=[
-                    {
-                        "role": "system",
-                        "content": system_prompt,
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            output = response.output_text
+            try:
+                response = self.ollama_client.chat(
+                    model="gemma3:4b",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt,
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                )
+                output = response.message.content
+                return output
+            except Exception as e:
+                logging.error(f"Could not connect to OLLAMA: {str(e)}")
+
+        response = self.openai_client.responses.create(
+            model="gpt-4o-mini",
+            input=[
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+        output = response.output_text
 
         return output
 
