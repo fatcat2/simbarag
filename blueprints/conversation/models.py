@@ -18,6 +18,9 @@ class Conversation(Model):
     name = fields.CharField(max_length=255)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+    user: fields.ForeignKeyRelation = fields.ForeignKeyField(
+        "models.User", related_name="conversations", null=True
+    )
 
     class Meta:
         table = "conversations"
