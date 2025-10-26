@@ -49,9 +49,18 @@ DOCTYPE_OPTIONS = [
     "Letter",
 ]
 
+QUERY_TYPE_OPTIONS = [
+    "Simba",
+    "Other",
+]
+
 
 class DocumentType(BaseModel):
     type: list[str] = Field(description="type of document", enum=DOCTYPE_OPTIONS)
+
+
+class QueryType(BaseModel):
+    type: str = Field(desciption="type of query", enum=QUERY_TYPE_OPTIONS)
 
 
 PROMPT = """
@@ -111,6 +120,27 @@ Query: "Who does Simba know?"
 Tags: ["Letter", "Documentation"]
 """
 
+QUERY_TYPE_PROMPT = f"""You are an information specialist that processes user queries.
+A query can have one tag attached from the following options. Based on the query and the transcript which is listed below, determine
+ which of the following options is most appropriate: {",".join(QUERY_TYPE_OPTIONS)}
+
+### Example 1
+Query: "Who is Simba's current vet?"
+Tags: ["Simba"]
+
+
+### Example 2
+Query: "What is the capital of Tokyo?"
+Tags: ["Other"]
+
+
+### Example 3
+Query: "Can you help me write an email?"
+Tags: ["Other"]
+
+TRANSCRIPT:
+"""
+
 
 class QueryGenerator:
     def __init__(self) -> None:
@@ -153,6 +183,33 @@ class QueryGenerator:
         type_data = json.loads(response_json_str)
         metadata_query = {"document_type": {"$in": type_data["type"]}}
         return metadata_query
+
+    def get_query_type(self, input: str, transcript: str):
+        client = OpenAI()
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an information specialist that is really good at deciding what tags a query should have",
+                },
+                {
+                    "role": "user",
+                    "content": f"{QUERY_TYPE_PROMPT}\nTRANSCRIPT:\n{transcript}\nQUERY:{input}",
+                },
+            ],
+            model="gpt-4o",
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "query_type",
+                    "schema": QueryType.model_json_schema(),
+                },
+            },
+        )
+
+        response_json_str = response.choices[0].message.content
+        type_data = json.loads(response_json_str)
+        return type_data["type"]
 
     def get_query(self, input: str):
         client = OpenAI()
