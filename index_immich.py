@@ -27,7 +27,7 @@ headers = {"x-api-key": API_KEY, "Content-Type": "application/json"}
 VISITED = {}
 
 if __name__ == "__main__":
-    conn = sqlite3.connect("./visited.db")
+    conn = sqlite3.connect("./database/visited.db")
     c = conn.cursor()
     c.execute("select immich_id from visited")
     rows = c.fetchall()

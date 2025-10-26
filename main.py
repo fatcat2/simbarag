@@ -77,7 +77,7 @@ def chunk_data(docs, collection, doctypes):
 
     logging.info(f"chunking {len(docs)} documents")
     texts: list[str] = [doc["content"] for doc in docs]
-    with sqlite3.connect("visited.db") as conn:
+    with sqlite3.connect("database/visited.db") as conn:
         to_insert = []
         c = conn.cursor()
         for index, text in enumerate(texts):
@@ -189,7 +189,7 @@ def consult_simba_oracle(input: str, transcript: str = ""):
 
 
 def filter_indexed_files(docs):
-    with sqlite3.connect("visited.db") as conn:
+    with sqlite3.connect("database/visited.db") as conn:
         c = conn.cursor()
         c.execute(
             "CREATE TABLE IF NOT EXISTS indexed_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, paperless_id INTEGER)"

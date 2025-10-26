@@ -10,7 +10,7 @@ from blueprints.users.models import User
 async def add_user(username: str, email: str, password: str):
     """Add a new user to the database"""
     await Tortoise.init(
-        db_url="sqlite://raggr.db",
+        db_url="sqlite://database/raggr.db",
         modules={
             "models": [
                 "blueprints.users.models",
@@ -56,7 +56,7 @@ async def add_user(username: str, email: str, password: str):
 async def list_users():
     """List all users in the database"""
     await Tortoise.init(
-        db_url="sqlite://raggr.db",
+        db_url="sqlite://database/raggr.db",
         modules={
             "models": [
                 "blueprints.users.models",

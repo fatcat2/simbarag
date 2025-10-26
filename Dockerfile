@@ -35,8 +35,8 @@ WORKDIR /app/raggr-frontend
 RUN yarn install && yarn build
 WORKDIR /app
 
-# Create ChromaDB directory
-RUN mkdir -p /app/chromadb
+# Create ChromaDB and database directories
+RUN mkdir -p /app/chromadb /app/database
 
 # Expose port
 EXPOSE 8080

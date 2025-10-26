@@ -1,7 +1,7 @@
 import os
 
 TORTOISE_ORM = {
-    "connections": {"default": os.getenv("DATABASE_URL", "sqlite:///app/raggr.db")},
+    "connections": {"default": os.getenv("DATABASE_URL", "sqlite:///app/database/raggr.db")},
     "apps": {
         "models": {
             "models": [

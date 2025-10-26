@@ -27,7 +27,7 @@ app.register_blueprint(blueprints.conversation.conversation_blueprint)
 
 
 TORTOISE_CONFIG = {
-    "connections": {"default": "sqlite://raggr.db"},
+    "connections": {"default": "sqlite://database/raggr.db"},
     "apps": {
         "models": {
             "models": [

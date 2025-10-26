@@ -12,6 +12,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - chromadb_data:/app/chromadb
+      - database_data:/app/database
 
 volumes:
   chromadb_data:
+  database_data:
