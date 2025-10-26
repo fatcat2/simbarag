@@ -6,14 +6,18 @@
   "scripts": {
     "build": "rsbuild build",
     "dev": "rsbuild dev --open",
-    "preview": "rsbuild preview"
+    "preview": "rsbuild preview",
+    "watch": "npm-watch build",
+    "watch:build": "rsbuild build --watch"
   },
   "dependencies": {
     "axios": "^1.12.2",
     "marked": "^16.3.0",
+    "npm-watch": "^0.13.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "watch": "^1.0.2"
   },
   "devDependencies": {
     "@rsbuild/core": "^1.5.6",
@@ -22,5 +26,16 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "typescript": "^5.9.2"
+  },
+  "watch": {
+    "build": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts,tsx,css,js,jsx",
+      "delay": 1000,
+      "quiet": false,
+      "inherit": true
+    }
   }
 }

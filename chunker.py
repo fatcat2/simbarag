@@ -14,7 +14,7 @@ from llm import LLMClient
 load_dotenv()
 
 ollama_client = Client(
-    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"), timeout=10.0
+    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"), timeout=1.0
 )
 
 

@@ -17,7 +17,7 @@ class LLMClient:
     def __init__(self):
         try:
             self.ollama_client = Client(
-                host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
+                host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=1.0
             )
             self.ollama_client.chat(
                 model="gemma3:4b", messages=[{"role": "system", "content": "test"}]

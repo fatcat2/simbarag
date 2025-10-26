@@ -113,7 +113,11 @@ def chunk_text(texts: list[str], collection):
         )
 
 
-def consult_oracle(input: str, collection):
+def consult_oracle(
+    input: str,
+    collection,
+    transcript: str = "",
+):
     import time
 
     chunker = Chunker(collection)
@@ -153,7 +157,10 @@ def consult_oracle(input: str, collection):
     logging.info("Starting LLM generation")
     llm_start = time.time()
     system_prompt = "You are a helpful assistant that understands veterinary terms."
-    prompt = f"Using the following data, help answer the user's query by providing as many details as possible. Using this data: {results}. Respond to this prompt: {input}"
+    transcript_prompt = f"Here is the message transcript thus far {transcript}."
+    prompt = f"""Using the following data, help answer the user's query by providing as many details as possible.
+    Using this data: {results}. {transcript_prompt if len(transcript) > 0 else ""}
+    Respond to this prompt: {input}"""
     output = llm_client.chat(prompt=prompt, system_prompt=system_prompt)
     llm_end = time.time()
     logging.info(f"LLM generation took {llm_end - llm_start:.2f} seconds")
@@ -173,10 +180,11 @@ def paperless_workflow(input):
     consult_oracle(input, simba_docs)
 
 
-def consult_simba_oracle(input: str):
+def consult_simba_oracle(input: str, transcript: str = ""):
     return consult_oracle(
         input=input,
         collection=simba_docs,
+        transcript=transcript,
     )
 
 
