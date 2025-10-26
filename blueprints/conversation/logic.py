@@ -44,3 +44,17 @@ async def get_conversation_for_user(user: blueprints.users.models.User) -> Conve
         await Conversation.get_or_create(name=f"{user.username}'s chat", user=user)
 
         return await Conversation.get(user=user)
+
+
+async def get_conversation_by_id(id: str) -> Conversation:
+    return await Conversation.get(id=id)
+
+
+async def get_conversation_transcript(
+    user: blueprints.users.models.User, conversation: Conversation
+) -> str:
+    messages = []
+    for message in conversation.messages:
+        messages.append(f"{message.speaker} at {message.created_at}: {message.text}")
+
+    return "\n".join(messages)

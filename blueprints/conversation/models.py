@@ -40,5 +40,15 @@ class ConversationMessage(Model):
 
 
 PydConversationMessage = pydantic_model_creator(ConversationMessage)
-PydConversation = pydantic_model_creator(Conversation, name="Conversation")
+PydConversation = pydantic_model_creator(
+    Conversation, name="Conversation", allow_cycles=True, exclude=("user",)
+)
+PydConversationWithMessages = pydantic_model_creator(
+    Conversation,
+    name="ConversationWithMessages",
+    allow_cycles=True,
+    exclude=("user",),
+    include=("messages",),
+)
+PydListConversation = pydantic_queryset_creator(Conversation)
 PydListConversationMessage = pydantic_queryset_creator(ConversationMessage)

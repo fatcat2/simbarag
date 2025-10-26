@@ -69,9 +69,11 @@ async def query():
     user = await blueprints.users.models.User.get(id=current_user_uuid)
     data = await request.get_json()
     query = data.get("query")
-    conversation = await blueprints.conversation.logic.get_conversation_for_user(
-        user=user
+    conversation_id = data.get("conversation_id")
+    conversation = await blueprints.conversation.logic.get_conversation_by_id(
+        conversation_id
     )
+    await conversation.fetch_related("messages")
     await blueprints.conversation.logic.add_message_to_conversation(
         conversation=conversation,
         message=query,
@@ -79,7 +81,11 @@ async def query():
         user=user,
     )
 
-    response = consult_simba_oracle(query)
+    transcript = await blueprints.conversation.logic.get_conversation_transcript(
+        user=user, conversation=conversation
+    )
+
+    response = consult_simba_oracle(input=query, transcript=transcript)
     await blueprints.conversation.logic.add_message_to_conversation(
         conversation=conversation,
         message=response,

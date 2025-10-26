@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { conversationService } from "../api/conversationService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
+import { ConversationList } from "./ConversationList";
+import { parse } from "node:path/win32";
 
 type Message = {
   text: string;
@@ -33,13 +35,69 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([
     { title: "simba meow meow", id: "uuid" },
   ]);
+  const [showConversations, setShowConversations] = useState<boolean>(false);
+  const [selectedConversation, setSelectedConversation] =
+    useState<Conversation | null>(null);
 
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
 
-  useEffect(() => {
+  const handleSelectConversation = (conversation: Conversation) => {
+    setShowConversations(false);
+    setSelectedConversation(conversation);
     const loadMessages = async () => {
       try {
-        const conversation = await conversationService.getMessages();
+        const fetchedConversation = await conversationService.getConversation(
+          conversation.id,
+        );
+        setMessages(
+          fetchedConversation.messages.map((message) => ({
+            text: message.text,
+            speaker: message.speaker,
+          })),
+        );
+      } catch (error) {
+        console.error("Failed to load messages:", error);
+      }
+    };
+    loadMessages();
+  };
+
+  const loadConversations = async () => {
+    try {
+      const fetchedConversations =
+        await conversationService.getAllConversations();
+      const parsedConversations = fetchedConversations.map((conversation) => ({
+        id: conversation.id,
+        title: conversation.name,
+      }));
+      setConversations(parsedConversations);
+      setSelectedConversation(parsedConversations[0]);
+      console.log(parsedConversations);
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    }
+  };
+
+  const handleCreateNewConversation = async () => {
+    const newConversation = await conversationService.createConversation();
+    await loadConversations();
+    setSelectedConversation({
+      title: newConversation.name,
+      id: newConversation.id,
+    });
+  };
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (selectedConversation == null) return;
+      try {
+        const conversation = await conversationService.getConversation(
+          selectedConversation.id,
+        );
         setMessages(
           conversation.messages.map((message) => ({
             text: message.text,
@@ -51,7 +109,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       }
     };
     loadMessages();
-  }, []);
+  }, [selectedConversation]);
 
   const handleQuestionSubmit = async () => {
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
@@ -74,7 +132,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     }
 
     try {
-      const result = await conversationService.sendQuery(query);
+      const result = await conversationService.sendQuery(
+        query,
+        selectedConversation.id,
+      );
       setQuestionsAnswers(
         questionsAnswers.concat([{ question: query, answer: result.response }]),
       );
@@ -101,16 +162,33 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         <div className="flex flex-row justify-center py-4">
           <div className="flex flex-col gap-4 min-w-xl max-w-xl">
             <div className="flex flex-row justify-between">
-              <header className="flex flex-row justify-center gap-2 grow sticky top-0 z-10 bg-white">
+              <header className="flex flex-row justify-center gap-2 sticky top-0 z-10 bg-white">
                 <h1 className="text-3xl">ask simba!</h1>
               </header>
-              <button
-                className="p-4 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md"
-                onClick={() => setAuthenticated(false)}
-              >
-                logout
-              </button>
+              <div className="flex flex-row gap-2">
+                <button
+                  className="p-2 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md"
+                  onClick={() => setShowConversations(!showConversations)}
+                >
+                  {showConversations
+                    ? "hide conversations"
+                    : "show conversations"}
+                </button>
+                <button
+                  className="p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md"
+                  onClick={() => setAuthenticated(false)}
+                >
+                  logout
+                </button>
+              </div>
             </div>
+            {showConversations && (
+              <ConversationList
+                conversations={conversations}
+                onCreateNewConversation={handleCreateNewConversation}
+                onSelectConversation={handleSelectConversation}
+              />
+            )}
             {messages.map((msg, index) => {
               if (msg.speaker === "simba") {
                 return <AnswerBubble key={index} text={msg.text} />;
