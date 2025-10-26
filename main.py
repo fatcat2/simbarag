@@ -205,6 +205,13 @@ def filter_indexed_files(docs):
 if __name__ == "__main__":
     args = parser.parse_args()
     if args.reindex:
+        with sqlite3.connect("database/visited.db") as conn:
+            c = conn.cursor()
+            c.execute("DELETE FROM indexed_documents")
+            conn.commit()
+
+        simba_docs.delete()
+
         logging.info("Fetching documents from Paperless-NGX")
         ppngx = PaperlessNGXService()
         docs = ppngx.get_data()
