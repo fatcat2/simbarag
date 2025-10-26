@@ -210,7 +210,10 @@ if __name__ == "__main__":
             c.execute("DELETE FROM indexed_documents")
             conn.commit()
 
-        simba_docs.delete(ids=[])
+        # Delete all documents from the collection
+        all_docs = simba_docs.get()
+        if all_docs["ids"]:
+            simba_docs.delete(ids=all_docs["ids"])
 
         logging.info("Fetching documents from Paperless-NGX")
         ppngx = PaperlessNGXService()

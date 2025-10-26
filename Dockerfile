@@ -24,7 +24,6 @@ RUN uv pip install --system -e .
 # Copy application code
 COPY *.py ./
 COPY blueprints ./blueprints
-COPY aerich.toml ./
 COPY migrations ./migrations
 COPY startup.sh ./
 RUN chmod +x startup.sh
