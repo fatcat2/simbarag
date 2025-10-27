@@ -26,8 +26,11 @@ app.register_blueprint(blueprints.users.user_blueprint)
 app.register_blueprint(blueprints.conversation.conversation_blueprint)
 
 
+# Database configuration with environment variable support
+DATABASE_PATH = os.getenv("DATABASE_PATH", "database/raggr.db")
+
 TORTOISE_CONFIG = {
-    "connections": {"default": "sqlite://database/raggr.db"},
+    "connections": {"default": f"sqlite://{DATABASE_PATH}"},
     "apps": {
         "models": {
             "models": [
