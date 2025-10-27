@@ -121,8 +121,11 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [selectedConversation]);
 
   const handleQuestionSubmit = async () => {
+    if (!query.trim()) return; // Don't submit empty messages
+
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
+    setQuery(""); // Clear input immediately after submission
 
     if (simbaMode) {
       console.log("simba mode activated");
@@ -151,7 +154,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       setMessages(
         currMessages.concat([{ text: result.response, speaker: "simba" }]),
       );
-      setQuery(""); // Clear input after successful send
     } catch (error) {
       console.error("Failed to send query:", error);
       // If session expired, redirect to login
