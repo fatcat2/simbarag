@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { userService } from "../api/userService";
 
 type LoginScreenProps = {
@@ -9,8 +9,23 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isChecking, setIsChecking] = useState<boolean>(true);
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    // Check if user is already authenticated
+    const checkAuth = async () => {
+      const isValid = await userService.validateToken();
+      if (isValid) {
+        setAuthenticated(true);
+      }
+      setIsChecking(false);
+    };
+    checkAuth();
+  }, [setAuthenticated]);
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
     if (!username || !password) {
       setError("Please enter username and password");
       return;
@@ -27,6 +42,25 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
       console.error("Login error:", err);
     }
   };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleLogin();
+    }
+  };
+
+  // Show loading state while checking authentication
+  if (isChecking) {
+    return (
+      <div className="h-screen bg-opacity-20">
+        <div className="bg-white/85 h-screen flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg sm:text-xl">Checking authentication...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-opacity-20">
@@ -52,6 +86,7 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
                 name="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onKeyPress={handleKeyPress}
                 className="border border-s-slate-950 p-3 rounded-md min-h-[44px]"
               />
               <label htmlFor="password" className="text-sm sm:text-base">
@@ -63,6 +98,7 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
                 name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
                 className="border border-s-slate-950 p-3 rounded-md min-h-[44px]"
               />
               {error && (

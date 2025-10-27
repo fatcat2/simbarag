@@ -55,6 +55,21 @@ class UserService {
     return data.access_token;
   }
 
+  async validateToken(): Promise<boolean> {
+    const refreshToken = localStorage.getItem("refresh_token");
+
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      await this.refreshToken();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   async fetchWithAuth(
     url: string,
     options: RequestInit = {},
