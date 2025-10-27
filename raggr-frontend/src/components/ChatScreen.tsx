@@ -156,6 +156,14 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     setQuery(event.target.value);
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter, but allow Shift+Enter for new line
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleQuestionSubmit();
+    }
+  };
+
   return (
     <div className="h-screen bg-opacity-20">
       <div className="bg-white/85 h-screen">
@@ -200,8 +208,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 <textarea
                   className="p-3 sm:p-4 border border-blue-200 rounded-md grow bg-white min-h-[44px] resize-y"
                   onChange={handleQueryChange}
+                  onKeyDown={handleKeyDown}
                   value={query}
                   rows={2}
+                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                 />
               </div>
               <div className="flex flex-row justify-between gap-2 grow">
