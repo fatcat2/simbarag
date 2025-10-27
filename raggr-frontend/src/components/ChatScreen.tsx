@@ -160,14 +160,14 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     <div className="h-screen bg-opacity-20">
       <div className="bg-white/85 h-screen">
         <div className="flex flex-row justify-center py-4">
-          <div className="flex flex-col gap-4 min-w-xl max-w-xl">
-            <div className="flex flex-row justify-between">
+          <div className="flex flex-col gap-4 w-full px-4 sm:w-11/12 sm:max-w-2xl lg:max-w-4xl sm:px-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:justify-between">
               <header className="flex flex-row justify-center gap-2 sticky top-0 z-10 bg-white">
-                <h1 className="text-3xl">ask simba!</h1>
+                <h1 className="text-2xl sm:text-3xl">ask simba!</h1>
               </header>
-              <div className="flex flex-row gap-2">
+              <div className="flex flex-row gap-2 justify-center sm:justify-end">
                 <button
-                  className="p-2 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md"
+                  className="p-2 h-11 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md text-sm sm:text-base"
                   onClick={() => setShowConversations(!showConversations)}
                 >
                   {showConversations
@@ -175,7 +175,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                     : "show conversations"}
                 </button>
                 <button
-                  className="p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md"
+                  className="p-2 h-11 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm sm:text-base"
                   onClick={() => setAuthenticated(false)}
                 >
                   logout
@@ -198,26 +198,28 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             <footer className="flex flex-col gap-2 sticky bottom-0">
               <div className="flex flex-row justify-between gap-2 grow">
                 <textarea
-                  className="p-4 border border-blue-200 rounded-md grow bg-white"
+                  className="p-3 sm:p-4 border border-blue-200 rounded-md grow bg-white min-h-[44px] resize-y"
                   onChange={handleQueryChange}
                   value={query}
+                  rows={2}
                 />
               </div>
               <div className="flex flex-row justify-between gap-2 grow">
                 <button
-                  className="p-4 border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow"
+                  className="p-3 sm:p-4 min-h-[44px] border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow text-sm sm:text-base"
                   onClick={() => handleQuestionSubmit()}
                   type="submit"
                 >
                   Submit
                 </button>
               </div>
-              <div className="flex flex-row justify-center gap-2 grow">
+              <div className="flex flex-row justify-center gap-2 grow items-center">
                 <input
                   type="checkbox"
                   onChange={(event) => setSimbaMode(event.target.checked)}
+                  className="w-5 h-5 cursor-pointer"
                 />
-                <p>simba mode?</p>
+                <p className="text-sm sm:text-base">simba mode?</p>
               </div>
             </footer>
           </div>

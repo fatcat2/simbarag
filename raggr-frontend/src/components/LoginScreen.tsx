@@ -32,42 +32,48 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
     <div className="h-screen bg-opacity-20">
       <div className="bg-white/85 h-screen">
         <div className="flex flex-row justify-center py-4">
-          <div className="flex flex-col gap-4 min-w-xl max-w-xl">
+          <div className="flex flex-col gap-4 w-full px-4 sm:w-11/12 sm:max-w-2xl lg:max-w-4xl sm:px-0">
             <div className="flex flex-col gap-1">
-              <div className="flex flex-grow justify-center w-full bg-amber-400">
-                <h1 className="text-xl font-bold">
+              <div className="flex flex-grow justify-center w-full bg-amber-400 p-2">
+                <h1 className="text-base sm:text-xl font-bold text-center">
                   I AM LOOKING FOR A DESIGNER. THIS APP WILL REMAIN UGLY UNTIL A
                   DESIGNER COMES.
                 </h1>
               </div>
               <header className="flex flex-row justify-center gap-2 grow sticky top-0 z-10 bg-white">
-                <h1 className="text-3xl">ask simba!</h1>
+                <h1 className="text-2xl sm:text-3xl">ask simba!</h1>
               </header>
-              <label htmlFor="username">username</label>
+              <label htmlFor="username" className="text-sm sm:text-base">
+                username
+              </label>
               <input
                 type="text"
                 id="username"
                 name="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="border border-s-slate-950 p-3 rounded-md"
+                className="border border-s-slate-950 p-3 rounded-md min-h-[44px]"
               />
-              <label htmlFor="password">password</label>
+              <label htmlFor="password" className="text-sm sm:text-base">
+                password
+              </label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="border border-s-slate-950 p-3 rounded-md"
+                className="border border-s-slate-950 p-3 rounded-md min-h-[44px]"
               />
               {error && (
-                <div className="text-red-600 font-semibold">{error}</div>
+                <div className="text-red-600 font-semibold text-sm sm:text-base">
+                  {error}
+                </div>
               )}
             </div>
 
             <button
-              className="p-4 border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow"
+              className="p-3 sm:p-4 min-h-[44px] border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow text-sm sm:text-base"
               onClick={handleLogin}
             >
               login
