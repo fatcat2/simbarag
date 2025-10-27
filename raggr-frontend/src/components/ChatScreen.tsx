@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { conversationService } from "../api/conversationService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
@@ -39,7 +39,12 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSelectConversation = (conversation: Conversation) => {
     setShowConversations(false);
@@ -90,6 +95,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -203,6 +212,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               }
               return <QuestionBubble key={index} text={msg.text} />;
             })}
+            <div ref={messagesEndRef} />
             <footer className="flex flex-col gap-2 sticky bottom-0">
               <div className="flex flex-row justify-between gap-2 grow">
                 <textarea
