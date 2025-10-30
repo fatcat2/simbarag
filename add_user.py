@@ -7,9 +7,15 @@ import asyncio
 from tortoise import Tortoise
 from blueprints.users.models import User
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Database configuration with environment variable support
 DATABASE_PATH = os.getenv("DATABASE_PATH", "database/raggr.db")
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite://{DATABASE_PATH}")
+
+print(DATABASE_URL)
 
 
 async def add_user(username: str, email: str, password: str):

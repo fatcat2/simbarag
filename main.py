@@ -186,7 +186,7 @@ def consult_oracle(
 def llm_chat(input: str, transcript: str = "") -> str:
     system_prompt = "You are a helpful assistant that understands veterinary terms."
     transcript_prompt = f"Here is the message transcript thus far {transcript}."
-    prompt = f"""Answer the user in a humorous way as if you were a cat named Simba. Be very coy.
+    prompt = f"""Answer the user in  as if you were a cat named Simba. Don't act too catlike. Be assertive.
     {transcript_prompt if len(transcript) > 0 else ""}
     Respond to this prompt: {input}"""
     output = llm_client.chat(prompt=prompt, system_prompt=system_prompt)
