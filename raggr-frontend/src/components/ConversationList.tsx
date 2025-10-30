@@ -38,22 +38,25 @@ export const ConversationList = ({
   }, []);
 
   return (
-    <div className="bg-indigo-300 rounded-md p-3 flex flex-col">
+    <div className="bg-indigo-300 rounded-md p-3 sm:p-4 flex flex-col gap-1">
       {conservations.map((conversation) => {
         return (
           <div
-            className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-2"
+            key={conversation.id}
+            className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
             onClick={() => onSelectConversation(conversation)}
           >
-            <p>{conversation.title}</p>
+            <p className="text-sm sm:text-base break-words">
+              {conversation.title}
+            </p>
           </div>
         );
       })}
       <div
-        className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-2"
+        className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
         onClick={() => onCreateNewConversation()}
       >
-        <p> + Start a new thread</p>
+        <p className="text-sm sm:text-base"> + Start a new thread</p>
       </div>
     </div>
   );

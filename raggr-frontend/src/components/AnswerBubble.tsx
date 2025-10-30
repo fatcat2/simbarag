@@ -7,7 +7,7 @@ type AnswerBubbleProps = {
 
 export const AnswerBubble = ({ text, loading }: AnswerBubbleProps) => {
   return (
-    <div className="rounded-md bg-orange-100 p-3">
+    <div className="rounded-md bg-orange-100 p-3 sm:p-4">
       {loading ? (
         <div className="flex flex-col w-full animate-pulse gap-2">
           <div className="flex flex-row gap-2 w-full">
@@ -20,8 +20,10 @@ export const AnswerBubble = ({ text, loading }: AnswerBubbleProps) => {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col">
-          <ReactMarkdown>{"🐈: " + text}</ReactMarkdown>
+        <div className="flex flex-col break-words overflow-wrap-anywhere">
+          <ReactMarkdown className="text-sm sm:text-base [&>*]:break-words">
+            {"🐈: " + text}
+          </ReactMarkdown>
         </div>
       )}
     </div>

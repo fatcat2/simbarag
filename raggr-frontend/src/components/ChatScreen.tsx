@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { conversationService } from "../api/conversationService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
@@ -39,7 +39,12 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSelectConversation = (conversation: Conversation) => {
     setShowConversations(false);
@@ -92,6 +97,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, []);
 
   useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
     const loadMessages = async () => {
       if (selectedConversation == null) return;
       try {
@@ -112,8 +121,11 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [selectedConversation]);
 
   const handleQuestionSubmit = async () => {
+    if (!query.trim()) return; // Don't submit empty messages
+
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
+    setQuery(""); // Clear input immediately after submission
 
     if (simbaMode) {
       console.log("simba mode activated");
@@ -142,7 +154,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       setMessages(
         currMessages.concat([{ text: result.response, speaker: "simba" }]),
       );
-      setQuery(""); // Clear input after successful send
     } catch (error) {
       console.error("Failed to send query:", error);
       // If session expired, redirect to login
@@ -156,18 +167,26 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     setQuery(event.target.value);
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter, but allow Shift+Enter for new line
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleQuestionSubmit();
+    }
+  };
+
   return (
     <div className="h-screen bg-opacity-20">
       <div className="bg-white/85 h-screen">
         <div className="flex flex-row justify-center py-4">
-          <div className="flex flex-col gap-4 min-w-xl max-w-xl">
-            <div className="flex flex-row justify-between">
+          <div className="flex flex-col gap-4 w-full px-4 sm:w-11/12 sm:max-w-2xl lg:max-w-4xl sm:px-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:justify-between">
               <header className="flex flex-row justify-center gap-2 sticky top-0 z-10 bg-white">
-                <h1 className="text-3xl">ask simba!</h1>
+                <h1 className="text-2xl sm:text-3xl">ask simba!</h1>
               </header>
-              <div className="flex flex-row gap-2">
+              <div className="flex flex-row gap-2 justify-center sm:justify-end">
                 <button
-                  className="p-2 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md"
+                  className="p-2 h-11 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md text-sm sm:text-base"
                   onClick={() => setShowConversations(!showConversations)}
                 >
                   {showConversations
@@ -175,7 +194,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                     : "show conversations"}
                 </button>
                 <button
-                  className="p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md"
+                  className="p-2 h-11 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm sm:text-base"
                   onClick={() => setAuthenticated(false)}
                 >
                   logout
@@ -195,29 +214,34 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               }
               return <QuestionBubble key={index} text={msg.text} />;
             })}
+            <div ref={messagesEndRef} />
             <footer className="flex flex-col gap-2 sticky bottom-0">
               <div className="flex flex-row justify-between gap-2 grow">
                 <textarea
-                  className="p-4 border border-blue-200 rounded-md grow bg-white"
+                  className="p-3 sm:p-4 border border-blue-200 rounded-md grow bg-white min-h-[44px] resize-y"
                   onChange={handleQueryChange}
+                  onKeyDown={handleKeyDown}
                   value={query}
+                  rows={2}
+                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                 />
               </div>
               <div className="flex flex-row justify-between gap-2 grow">
                 <button
-                  className="p-4 border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow"
+                  className="p-3 sm:p-4 min-h-[44px] border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow text-sm sm:text-base"
                   onClick={() => handleQuestionSubmit()}
                   type="submit"
                 >
                   Submit
                 </button>
               </div>
-              <div className="flex flex-row justify-center gap-2 grow">
+              <div className="flex flex-row justify-center gap-2 grow items-center">
                 <input
                   type="checkbox"
                   onChange={(event) => setSimbaMode(event.target.checked)}
+                  className="w-5 h-5 cursor-pointer"
                 />
-                <p>simba mode?</p>
+                <p className="text-sm sm:text-base">simba mode?</p>
               </div>
             </footer>
           </div>
