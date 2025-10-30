@@ -22,8 +22,14 @@ export const ConversationList = ({
   useEffect(() => {
     const loadConversations = async () => {
       try {
-        const fetchedConversations =
+        let fetchedConversations =
           await conversationService.getAllConversations();
+
+        if (conversations.length == 0) {
+          await conversationService.createConversation();
+          fetchedConversations =
+            await conversationService.getAllConversations();
+        }
         setConversations(
           fetchedConversations.map((conversation) => ({
             id: conversation.id,
