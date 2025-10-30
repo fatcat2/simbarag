@@ -24,7 +24,7 @@ const AppContainer = () => {
 
       // Try to verify token by making a request
       try {
-        await conversationService.getMessages();
+        await conversationService.getAllConversations();
         // If successful, user is authenticated
         setAuthenticated(true);
       } catch (error) {
