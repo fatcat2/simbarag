@@ -1,16 +1,14 @@
 import os
 
-from quart import Quart, request, jsonify, render_template, send_from_directory
+from quart import Quart, jsonify, render_template, request, send_from_directory
+from quart_jwt_extended import JWTManager, get_jwt_identity, jwt_refresh_token_required
 from tortoise.contrib.quart import register_tortoise
 
-from quart_jwt_extended import JWTManager, jwt_refresh_token_required, get_jwt_identity
-
-from main import consult_simba_oracle
-
-import blueprints.users
 import blueprints.conversation
 import blueprints.conversation.logic
+import blueprints.users
 import blueprints.users.models
+from main import consult_simba_oracle
 
 app = Quart(
     __name__,
