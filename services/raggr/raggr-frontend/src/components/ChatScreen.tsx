@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { conversationService } from "../api/conversationService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
+import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
-import { parse } from "node:path/win32";
+import catIcon from "../assets/cat.png";
 
 type Message = {
   text: string;
@@ -38,6 +39,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [showConversations, setShowConversations] = useState<boolean>(false);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
@@ -176,37 +178,81 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   };
 
   return (
-    <div className="h-screen bg-opacity-20">
-      <div className="bg-white/85 h-screen">
-        <div className="flex flex-row justify-center py-4">
-          <div className="flex flex-col gap-4 w-full px-4 sm:w-11/12 sm:max-w-2xl lg:max-w-4xl sm:px-0">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:justify-between">
-              <header className="flex flex-row justify-center gap-2 sticky top-0 z-10 bg-white">
-                <h1 className="text-2xl sm:text-3xl">ask simba!</h1>
-              </header>
-              <div className="flex flex-row gap-2 justify-center sm:justify-end">
-                <button
-                  className="p-2 h-11 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md text-sm sm:text-base"
-                  onClick={() => setShowConversations(!showConversations)}
-                >
-                  {showConversations
-                    ? "hide conversations"
-                    : "show conversations"}
-                </button>
-                <button
-                  className="p-2 h-11 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm sm:text-base"
-                  onClick={() => setAuthenticated(false)}
-                >
-                  logout
-                </button>
-              </div>
-            </div>
-            {showConversations && (
-              <ConversationList
-                conversations={conversations}
-                onCreateNewConversation={handleCreateNewConversation}
-                onSelectConversation={handleSelectConversation}
+    <div className="h-screen flex flex-row bg-[#F9F5EB]">
+      {/* Sidebar - Expanded */}
+      <aside className={`hidden md:flex md:flex-col bg-white border-r border-gray-200 p-4 overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+        {!sidebarCollapsed ? (
+          <>
+            <div className="flex flex-row items-center gap-2 mb-6">
+              <img
+                src={catIcon}
+                alt="Simba"
+                className="cursor-pointer hover:opacity-80"
+                onClick={() => setSidebarCollapsed(true)}
               />
+              <h2 className="text-3xl font-semibold">asksimba!</h2>
+            </div>
+            <ConversationList
+              conversations={conversations}
+              onCreateNewConversation={handleCreateNewConversation}
+              onSelectConversation={handleSelectConversation}
+            />
+            <div className="mt-auto pt-4">
+              <button
+                className="w-full p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm"
+                onClick={() => setAuthenticated(false)}
+              >
+                logout
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src={catIcon}
+              alt="Simba"
+              className="cursor-pointer hover:opacity-80"
+              onClick={() => setSidebarCollapsed(false)}
+            />
+          </div>
+        )}
+      </aside>
+
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Mobile header */}
+        <header className="md:hidden flex flex-row justify-between items-center gap-3 p-4 border-b border-gray-200 bg-white">
+          <div className="flex flex-row items-center gap-2">
+            <img src={catIcon} alt="Simba" className="w-10 h-10" />
+            <h1 className="text-xl">asksimba!</h1>
+          </div>
+          <div className="flex flex-row gap-2">
+            <button
+              className="p-2 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md text-sm"
+              onClick={() => setShowConversations(!showConversations)}
+            >
+              {showConversations ? "hide" : "show"}
+            </button>
+            <button
+              className="p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm"
+              onClick={() => setAuthenticated(false)}
+            >
+              logout
+            </button>
+          </div>
+        </header>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-2xl mx-auto flex flex-col gap-4">
+            {showConversations && (
+              <div className="md:hidden">
+                <ConversationList
+                  conversations={conversations}
+                  onCreateNewConversation={handleCreateNewConversation}
+                  onSelectConversation={handleSelectConversation}
+                />
+              </div>
             )}
             {messages.map((msg, index) => {
               if (msg.speaker === "simba") {
@@ -215,37 +261,21 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               return <QuestionBubble key={index} text={msg.text} />;
             })}
             <div ref={messagesEndRef} />
-            <footer className="flex flex-col gap-2 sticky bottom-0">
-              <div className="flex flex-row justify-between gap-2 grow">
-                <textarea
-                  className="p-3 sm:p-4 border border-blue-200 rounded-md grow bg-white min-h-[44px] resize-y"
-                  onChange={handleQueryChange}
-                  onKeyDown={handleKeyDown}
-                  value={query}
-                  rows={2}
-                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-                />
-              </div>
-              <div className="flex flex-row justify-between gap-2 grow">
-                <button
-                  className="p-3 sm:p-4 min-h-[44px] border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow text-sm sm:text-base"
-                  onClick={() => handleQuestionSubmit()}
-                  type="submit"
-                >
-                  Submit
-                </button>
-              </div>
-              <div className="flex flex-row justify-center gap-2 grow items-center">
-                <input
-                  type="checkbox"
-                  onChange={(event) => setSimbaMode(event.target.checked)}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                <p className="text-sm sm:text-base">simba mode?</p>
-              </div>
-            </footer>
           </div>
         </div>
+
+        {/* Input area */}
+        <footer className="p-4 bg-[#F9F5EB]">
+          <div className="max-w-2xl mx-auto">
+            <MessageInput
+              query={query}
+              handleQueryChange={handleQueryChange}
+              handleKeyDown={handleKeyDown}
+              handleQuestionSubmit={handleQuestionSubmit}
+              setSimbaMode={setSimbaMode}
+            />
+          </div>
+        </footer>
       </div>
     </div>
   );

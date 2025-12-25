@@ -20,6 +20,7 @@
     "watch": "^1.0.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.10",
     "@rsbuild/core": "^1.5.6",
     "@rsbuild/plugin-react": "^1.4.0",
     "@tailwindcss/postcss": "^4.0.0",

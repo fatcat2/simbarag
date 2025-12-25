@@ -52,7 +52,7 @@ export const ConversationList = ({
             className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
             onClick={() => onSelectConversation(conversation)}
           >
-            <p className="text-sm sm:text-base break-words">
+            <p className="text-sm sm:text-base truncate w-full">
               {conversation.title}
             </p>
           </div>

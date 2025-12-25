@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  raggr-backend:
+    build:
+      context: ./services/raggr
+      dockerfile: Dockerfile.dev
+    image: torrtle/simbarag:dev
+    ports:
+      - "8080:8080"
+    environment:
+      - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
+      - BASE_URL=${BASE_URL}
+      - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
+      - CHROMADB_PATH=/app/chromadb
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount source code for hot reload
+      - ./services/raggr:/app
+      # Exclude node_modules and Python cache
+      - /app/raggr-frontend/node_modules
+      - /app/__pycache__
+      # Persist data
+      - chromadb_data:/app/chromadb
+      - database_data:/app/database
+    command: sh -c "chmod +x /app/startup-dev.sh && /app/startup-dev.sh"
+
+  raggr-frontend:
+    build:
+      context: ./services/raggr/raggr-frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source code for hot reload
+      - ./services/raggr/raggr-frontend:/app
+      # Exclude node_modules to use container's version
+      - /app/node_modules
+    command: sh -c "yarn build && yarn watch:build"
+
+volumes:
+  chromadb_data:
+  database_data:
