@@ -4,6 +4,7 @@ interface LoginResponse {
   user: {
     id: string;
     username: string;
+    email?: string;
   };
 }
 

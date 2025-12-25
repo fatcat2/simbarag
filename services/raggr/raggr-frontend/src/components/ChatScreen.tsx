@@ -190,7 +190,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 className="cursor-pointer hover:opacity-80"
                 onClick={() => setSidebarCollapsed(true)}
               />
-              <h2 className="text-3xl font-semibold">asksimba!</h2>
+              <h2 className="text-3xl bg-[#F9F5EB] font-semibold">asksimba!</h2>
             </div>
             <ConversationList
               conversations={conversations}

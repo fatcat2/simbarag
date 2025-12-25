@@ -1,6 +1,22 @@
 version: "3.8"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=raggr
+      - POSTGRES_PASSWORD=raggr_dev_password
+      - POSTGRES_DB=raggr
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raggr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   raggr-backend:
     build:
       context: ./services/raggr
@@ -8,14 +24,26 @@ services:
     image: torrtle/simbarag:dev
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
       - CHROMADB_PATH=/app/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
+      - OIDC_USE_DISCOVERY=${OIDC_USE_DISCOVERY:-true}
+      - DATABASE_URL=postgres://raggr:raggr_dev_password@postgres:5432/raggr
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       # Mount source code for hot reload
       - ./services/raggr:/app
@@ -24,7 +52,6 @@ services:
       - /app/__pycache__
       # Persist data
       - chromadb_data:/app/chromadb
-      - database_data:/app/database
     command: sh -c "chmod +x /app/startup-dev.sh && /app/startup-dev.sh"
 
   raggr-frontend:
@@ -42,4 +69,4 @@ services:
 
 volumes:
   chromadb_data:
-  database_data:
+  postgres_data:

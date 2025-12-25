@@ -1,6 +1,21 @@
 version: "3.8"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-raggr}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-raggr}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raggr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   raggr:
     build:
       context: ./services/raggr
@@ -13,10 +28,20 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
       - CHROMADB_PATH=/app/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
+      - OIDC_USE_DISCOVERY=${OIDC_USE_DISCOVERY:-true}
+      - DATABASE_URL=${DATABASE_URL:-postgres://raggr:changeme@postgres:5432/raggr}
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - chromadb_data:/app/chromadb
-      - database_data:/app/database
+    restart: unless-stopped
 
 volumes:
   chromadb_data:
-  database_data:
+  postgres_data:
