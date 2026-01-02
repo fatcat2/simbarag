@@ -1,18 +1,19 @@
 import datetime
 
+from quart import Blueprint, jsonify
 from quart_jwt_extended import (
-    jwt_refresh_token_required,
     get_jwt_identity,
+    jwt_refresh_token_required,
 )
 
-from quart import Blueprint, jsonify
+import blueprints.users.models
+
+from .logic import rename_conversation
 from .models import (
     Conversation,
     PydConversation,
     PydListConversation,
 )
-
-import blueprints.users.models
 
 conversation_blueprint = Blueprint(
     "conversation_api", __name__, url_prefix="/api/conversation"
@@ -20,8 +21,11 @@ conversation_blueprint = Blueprint(
 
 
 @conversation_blueprint.route("/<conversation_id>")
+@jwt_refresh_token_required
 async def get_conversation(conversation_id: str):
     conversation = await Conversation.get(id=conversation_id)
+    current_user_uuid = get_jwt_identity()
+    user = await blueprints.users.models.User.get(id=current_user_uuid)
     await conversation.fetch_related("messages")
 
     # Manually serialize the conversation with messages
@@ -35,11 +39,18 @@ async def get_conversation(conversation_id: str):
                 "created_at": msg.created_at.isoformat(),
             }
         )
+    name = conversation.name
+    if len(messages) > 8 and "datetime" in name.lower():
+        name = await rename_conversation(
+            user=user,
+            conversation=conversation,
+        )
+        print(name)
 
     return jsonify(
         {
             "id": str(conversation.id),
-            "name": conversation.name,
+            "name": name,
             "messages": messages,
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),

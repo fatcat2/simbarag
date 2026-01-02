@@ -80,6 +80,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       setConversations(parsedConversations);
       setSelectedConversation(parsedConversations[0]);
       console.log(parsedConversations);
+      console.log("JELLYFISH@");
     } catch (error) {
       console.error("Failed to load messages:", error);
     }
@@ -104,11 +105,18 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
 
   useEffect(() => {
     const loadMessages = async () => {
+      console.log(selectedConversation);
+      console.log("JELLYFISH");
       if (selectedConversation == null) return;
       try {
         const conversation = await conversationService.getConversation(
           selectedConversation.id,
         );
+        // Update the conversation title in case it changed
+        setSelectedConversation({
+          id: conversation.id,
+          title: conversation.name,
+        });
         setMessages(
           conversation.messages.map((message) => ({
             text: message.text,
@@ -120,7 +128,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       }
     };
     loadMessages();
-  }, [selectedConversation]);
+  }, [selectedConversation?.id]);
 
   const handleQuestionSubmit = async () => {
     if (!query.trim()) return; // Don't submit empty messages
@@ -180,9 +188,11 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   return (
     <div className="h-screen flex flex-row bg-[#F9F5EB]">
       {/* Sidebar - Expanded */}
-      <aside className={`hidden md:flex md:flex-col bg-white border-r border-gray-200 p-4 overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      <aside
+        className={`hidden md:flex md:flex-col bg-[#F9F5EB] border-r border-gray-200 p-4 overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? "w-20" : "w-64"}`}
+      >
         {!sidebarCollapsed ? (
-          <>
+          <div className="bg-[#F9F5EB]">
             <div className="flex flex-row items-center gap-2 mb-6">
               <img
                 src={catIcon}
@@ -205,7 +215,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 logout
               </button>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
             <img
@@ -243,7 +253,18 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         </header>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        {selectedConversation && (
+          <div className="sticky top-0 mx-auto w-full">
+            <div className="bg-[#F9F5EB] text-black px-6 w-full py-3">
+              <h2 className="text-lg font-semibold">
+                {selectedConversation.title || "Untitled Conversation"}
+              </h2>
+            </div>
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto relative px-4 py-6">
+          {/* Floating conversation name */}
+
           <div className="max-w-2xl mx-auto flex flex-col gap-4">
             {showConversations && (
               <div className="md:hidden">

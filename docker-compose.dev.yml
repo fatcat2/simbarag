@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -45,14 +43,33 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      # Mount source code for hot reload
-      - ./services/raggr:/app
-      # Exclude node_modules and Python cache
-      - /app/raggr-frontend/node_modules
-      - /app/__pycache__
-      # Persist data
+      # Persist data only
       - chromadb_data:/app/chromadb
-    command: sh -c "chmod +x /app/startup-dev.sh && /app/startup-dev.sh"
+      # Share frontend dist with frontend container
+      - frontend_dist:/app/raggr-frontend/dist
+    develop:
+      watch:
+        # Sync Python source files
+        - action: sync
+          path: ./services/raggr
+          target: /app
+          ignore:
+            - raggr-frontend/
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+            - .git/
+            - chromadb/
+        # Sync+restart on frontend dist changes
+        - action: sync+restart
+          path: ./services/raggr/raggr-frontend/dist
+          target: /app/raggr-frontend/dist
+        # Restart on dependency changes
+        - action: rebuild
+          path: ./services/raggr/pyproject.toml
+        - action: rebuild
+          path: ./services/raggr/uv.lock
 
   raggr-frontend:
     build:
@@ -61,12 +78,25 @@ services:
     environment:
       - NODE_ENV=development
     volumes:
-      # Mount source code for hot reload
-      - ./services/raggr/raggr-frontend:/app
-      # Exclude node_modules to use container's version
-      - /app/node_modules
-    command: sh -c "yarn build && yarn watch:build"
+      # Share dist folder with backend
+      - frontend_dist:/app/dist
+    develop:
+      watch:
+        # Sync frontend source files
+        - action: sync
+          path: ./services/raggr/raggr-frontend
+          target: /app
+          ignore:
+            - node_modules/
+            - dist/
+            - .git/
+        # Rebuild on dependency changes
+        - action: rebuild
+          path: ./services/raggr/raggr-frontend/package.json
+        - action: rebuild
+          path: ./services/raggr/raggr-frontend/yarn.lock
 
 volumes:
   chromadb_data:
   postgres_data:
+  frontend_dist:

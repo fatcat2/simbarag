@@ -26,8 +26,7 @@ app.register_blueprint(blueprints.conversation.conversation_blueprint)
 
 # Database configuration with environment variable support
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgres://raggr:raggr_dev_password@localhost:5432/raggr"
+    "DATABASE_URL", "postgres://raggr:raggr_dev_password@localhost:5432/raggr"
 )
 
 TORTOISE_CONFIG = {
@@ -123,10 +122,17 @@ async def get_messages():
             }
         )
 
+    name = conversation.name
+    if len(messages) > 8:
+        name = await blueprints.conversation.logic.rename_conversation(
+            user=user,
+            conversation=conversation,
+        )
+
     return jsonify(
         {
             "id": str(conversation.id),
-            "name": conversation.name,
+            "name": name,
             "messages": messages,
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),

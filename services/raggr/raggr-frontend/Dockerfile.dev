@@ -8,8 +8,11 @@ COPY package.json yarn.lock* ./
 # Install dependencies
 RUN yarn install
 
+# Copy application source code
+COPY . .
+
 # Expose rsbuild dev server port (default 3000)
 EXPOSE 3000
 
-# The actual source code will be mounted as a volume
-# CMD will be specified in docker-compose
+# Default command
+CMD ["sh", "-c", "yarn build && yarn watch:build"]
