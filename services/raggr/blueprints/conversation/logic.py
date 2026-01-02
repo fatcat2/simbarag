@@ -1,8 +1,9 @@
 import tortoise.exceptions
-
-from .models import Conversation, ConversationMessage
+from langchain_openai import ChatOpenAI
 
 import blueprints.users.models
+
+from .models import Conversation, ConversationMessage, RenameConversationOutputSchema
 
 
 async def create_conversation(name: str = "") -> Conversation:
@@ -58,3 +59,22 @@ async def get_conversation_transcript(
         messages.append(f"{message.speaker} at {message.created_at}: {message.text}")
 
     return "\n".join(messages)
+
+
+async def rename_conversation(
+    user: blueprints.users.models.User,
+    conversation: Conversation,
+) -> str:
+    messages: str = await get_conversation_transcript(
+        user=user, conversation=conversation
+    )
+
+    llm = ChatOpenAI(model="gpt-4o-mini")
+    structured_llm = llm.with_structured_output(RenameConversationOutputSchema)
+
+    prompt = f"Summarize the following conversation into a sassy one-liner title:\n\n{messages}"
+    response = structured_llm.invoke(prompt)
+    new_name: str = response.get("title")
+    conversation.name = new_name
+    await conversation.save()
+    return new_name
