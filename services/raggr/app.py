@@ -6,6 +6,7 @@ from tortoise.contrib.quart import register_tortoise
 
 import blueprints.conversation
 import blueprints.conversation.logic
+import blueprints.rag
 import blueprints.users
 import blueprints.users.models
 from main import consult_simba_oracle
@@ -22,6 +23,7 @@ jwt = JWTManager(app)
 # Register blueprints
 app.register_blueprint(blueprints.users.user_blueprint)
 app.register_blueprint(blueprints.conversation.conversation_blueprint)
+app.register_blueprint(blueprints.rag.rag_blueprint)
 
 
 # Database configuration with environment variable support

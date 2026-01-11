@@ -1,17 +1,15 @@
-import httpx
-import os
-from pathlib import Path
 import logging
-import tempfile
+import os
+import sqlite3
+
+import httpx
+from dotenv import load_dotenv
 
 from image_process import describe_simba_image
 from request import PaperlessNGXService
-import sqlite3
 
 logging.basicConfig(level=logging.INFO)
 
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -89,7 +87,7 @@ if __name__ == "__main__":
             image_date = description.image_date
 
             description_filepath = os.path.join(
-                "/Users/ryanchen/Programs/raggr", f"SIMBA_DESCRIBE_001.txt"
+                "/Users/ryanchen/Programs/raggr", "SIMBA_DESCRIBE_001.txt"
             )
             file = open(description_filepath, "w+")
             file.write(image_description)

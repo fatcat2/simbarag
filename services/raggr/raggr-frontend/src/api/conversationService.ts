@@ -37,7 +37,7 @@ class ConversationService {
     conversation_id: string,
   ): Promise<QueryResponse> {
     const response = await userService.fetchWithRefreshToken(
-      `${this.baseUrl}/query`,
+      `${this.conversationBaseUrl}/query`,
       {
         method: "POST",
         body: JSON.stringify({ query, conversation_id }),

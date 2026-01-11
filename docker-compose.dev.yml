@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 5
 
-  raggr-backend:
+  raggr:
     build:
       context: ./services/raggr
       dockerfile: Dockerfile.dev
@@ -28,7 +28,7 @@ services:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
-      - CHROMADB_PATH=/app/chromadb
+      - CHROMADB_PATH=/app/data/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - OIDC_ISSUER=${OIDC_ISSUER}
@@ -39,64 +39,28 @@ services:
       - DATABASE_URL=postgres://raggr:raggr_dev_password@postgres:5432/raggr
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
+      - NODE_ENV=development
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      # Persist data only
-      - chromadb_data:/app/chromadb
-      # Share frontend dist with frontend container
-      - frontend_dist:/app/raggr-frontend/dist
+      - chromadb_data:/app/data/chromadb
     develop:
       watch:
-        # Sync Python source files
-        - action: sync
+        # Sync+restart on any file change under services/raggr
+        - action: sync+restart
           path: ./services/raggr
           target: /app
           ignore:
-            - raggr-frontend/
             - __pycache__/
             - "*.pyc"
             - "*.pyo"
             - "*.pyd"
             - .git/
             - chromadb/
-        # Sync+restart on frontend dist changes
-        - action: sync+restart
-          path: ./services/raggr/raggr-frontend/dist
-          target: /app/raggr-frontend/dist
-        # Restart on dependency changes
-        - action: rebuild
-          path: ./services/raggr/pyproject.toml
-        - action: rebuild
-          path: ./services/raggr/uv.lock
-
-  raggr-frontend:
-    build:
-      context: ./services/raggr/raggr-frontend
-      dockerfile: Dockerfile.dev
-    environment:
-      - NODE_ENV=development
-    volumes:
-      # Share dist folder with backend
-      - frontend_dist:/app/dist
-    develop:
-      watch:
-        # Sync frontend source files
-        - action: sync
-          path: ./services/raggr/raggr-frontend
-          target: /app
-          ignore:
             - node_modules/
-            - dist/
-            - .git/
-        # Rebuild on dependency changes
-        - action: rebuild
-          path: ./services/raggr/raggr-frontend/package.json
-        - action: rebuild
-          path: ./services/raggr/raggr-frontend/yarn.lock
+            - raggr-frontend/dist/
 
 volumes:
   chromadb_data:
   postgres_data:
-  frontend_dist:

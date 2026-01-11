@@ -14,5 +14,7 @@ wheels/
 
 # Database files
 chromadb/
+chromadb_openai/
+chroma_db/
 database/
 *.db

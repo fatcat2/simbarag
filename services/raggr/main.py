@@ -1,23 +1,19 @@
+import argparse
 import datetime
 import logging
 import os
 import sqlite3
-
-import argparse
-import chromadb
-import ollama
-
 import time
 
+import ollama
+from dotenv import load_dotenv
 
-from request import PaperlessNGXService
+import chromadb
 from chunker import Chunker
 from cleaner import pdf_to_image, summarize_pdf_image
 from llm import LLMClient
 from query import QueryGenerator
-
-
-from dotenv import load_dotenv
+from request import PaperlessNGXService
 
 _dotenv_loaded = load_dotenv()
 
@@ -186,7 +182,7 @@ def consult_oracle(
 def llm_chat(input: str, transcript: str = "") -> str:
     system_prompt = "You are a helpful assistant that understands veterinary terms."
     transcript_prompt = f"Here is the message transcript thus far {transcript}."
-    prompt = f"""Answer the user in  as if you were a cat named Simba. Don't act too catlike. Be assertive.
+    prompt = f"""Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.
     {transcript_prompt if len(transcript) > 0 else ""}
     Respond to this prompt: {input}"""
     output = llm_client.chat(prompt=prompt, system_prompt=system_prompt)

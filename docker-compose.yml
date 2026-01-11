@@ -26,7 +26,7 @@ services:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
-      - CHROMADB_PATH=/app/chromadb
+      - CHROMADB_PATH=/app/data/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - OIDC_ISSUER=${OIDC_ISSUER}
@@ -39,7 +39,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - chromadb_data:/app/chromadb
+      - chromadb_data:/app/data/chromadb
     restart: unless-stopped
 
 volumes:
