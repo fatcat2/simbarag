@@ -12,7 +12,6 @@ from .agents import main_agent
 from .logic import (
     add_message_to_conversation,
     get_conversation_by_id,
-    get_conversation_transcript,
     rename_conversation,
 )
 from .models import (
@@ -43,22 +42,29 @@ async def query():
         user=user,
     )
 
-    transcript = await get_conversation_transcript(user=user, conversation=conversation)
+    # Build conversation history from recent messages (last 10 for context)
+    recent_messages = (
+        conversation.messages[-10:]
+        if len(conversation.messages) > 10
+        else conversation.messages
+    )
 
-    transcript_prompt = f"Here is the message transcript thus far {transcript}."
-    prompt = f"""Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.
-    {transcript_prompt if len(transcript) > 0 else ""}
-    Respond to this prompt: {query}"""
+    messages_payload = [
+        {
+            "role": "system",
+            "content": "You are a helpful cat assistant named Simba that understands veterinary terms. When there are questions to you specifically, they are referring to Simba the cat. Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.\n\nIMPORTANT: When users ask factual questions about Simba's health, medical history, veterinary visits, medications, weight, or any information that would be in documents, you MUST use the simba_search tool to retrieve accurate information before answering. Do not rely on general knowledge - always search the documents for factual questions.",
+        }
+    ]
 
-    payload = {
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful cat assistant named Simba that understands veterinary terms. When there are questions to you specifically, they are referring to Simba the cat. Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.\n\nIMPORTANT: When users ask factual questions about Simba's health, medical history, veterinary visits, medications, weight, or any information that would be in documents, you MUST use the simba_search tool to retrieve accurate information before answering. Do not rely on general knowledge - always search the documents for factual questions.",
-            },
-            {"role": "user", "content": prompt},
-        ]
-    }
+    # Add recent conversation history
+    for msg in recent_messages[:-1]:  # Exclude the message we just added
+        role = "user" if msg.speaker == "user" else "assistant"
+        messages_payload.append({"role": role, "content": msg.text})
+
+    # Add current query
+    messages_payload.append({"role": "user", "content": query})
+
+    payload = {"messages": messages_payload}
 
     response = await main_agent.ainvoke(payload)
     message = response.get("messages", [])[-1].content
