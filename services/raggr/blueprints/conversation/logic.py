@@ -74,7 +74,7 @@ async def rename_conversation(
 
     prompt = f"Summarize the following conversation into a sassy one-liner title:\n\n{messages}"
     response = structured_llm.invoke(prompt)
-    new_name: str = response.get("title")
+    new_name: str = response.get("title", "")
     conversation.name = new_name
     await conversation.save()
     return new_name

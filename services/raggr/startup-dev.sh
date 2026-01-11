@@ -2,13 +2,12 @@
 set -e
 
 echo "Initializing directories..."
-mkdir -p /app/chromadb
+mkdir -p /app/data/chromadb
 
-echo "Waiting for frontend to build..."
-while [ ! -f /app/raggr-frontend/dist/index.html ]; do
-    sleep 1
-done
-echo "Frontend built successfully!"
+echo "Rebuilding frontend..."
+cd /app/raggr-frontend
+yarn build
+cd /app
 
 echo "Setting up database..."
 # Give PostgreSQL a moment to be ready (healthcheck in docker-compose handles this)
@@ -21,9 +20,6 @@ else
     echo "No migrations found, initializing database..."
     aerich init-db
 fi
-
-echo "Starting reindex process..."
-python main.py "" --reindex || echo "Reindex failed, continuing anyway..."
 
 echo "Starting Flask application in debug mode..."
 python app.py

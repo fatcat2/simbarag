@@ -40,6 +40,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
@@ -131,11 +132,12 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [selectedConversation?.id]);
 
   const handleQuestionSubmit = async () => {
-    if (!query.trim()) return; // Don't submit empty messages
+    if (!query.trim() || isLoading) return; // Don't submit empty messages or while loading
 
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
     setQuery(""); // Clear input immediately after submission
+    setIsLoading(true);
 
     if (simbaMode) {
       console.log("simba mode activated");
@@ -150,6 +152,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
           },
         ]),
       );
+      setIsLoading(false);
       return;
     }
 
@@ -170,6 +173,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       if (error instanceof Error && error.message.includes("Session expired")) {
         setAuthenticated(false);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -281,6 +286,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               }
               return <QuestionBubble key={index} text={msg.text} />;
             })}
+            {isLoading && <AnswerBubble text="" loading={true} />}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -294,6 +300,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               handleKeyDown={handleKeyDown}
               handleQuestionSubmit={handleQuestionSubmit}
               setSimbaMode={setSimbaMode}
+              isLoading={isLoading}
             />
           </div>
         </footer>
