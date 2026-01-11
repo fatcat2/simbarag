@@ -8,7 +8,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .fetchers import PaperlessNGXService
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 vector_store = Chroma(
     collection_name="simba_docs",
@@ -61,7 +61,7 @@ async def index_documents():
 
 
 async def query_vector_store(query: str):
-    retrieved_docs = vector_store.similarity_search(query, k=2)
+    retrieved_docs = await vector_store.asimilarity_search(query, k=2)
     serialized = "\n\n".join(
         (f"Source: {doc.metadata}\nContent: {doc.page_content}")
         for doc in retrieved_docs
