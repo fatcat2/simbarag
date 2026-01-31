@@ -46,6 +46,7 @@ services:
         condition: service_healthy
     volumes:
       - chromadb_data:/app/data/chromadb
+      - ./services/raggr/migrations:/app/migrations  # Bind mount for migrations (bidirectional)
     develop:
       watch:
         # Sync+restart on any file change under services/raggr

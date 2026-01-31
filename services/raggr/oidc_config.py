@@ -1,6 +1,7 @@
 """
 OIDC Configuration for Authelia Integration
 """
+
 import os
 from typing import Dict, Any
 from authlib.jose import jwt
