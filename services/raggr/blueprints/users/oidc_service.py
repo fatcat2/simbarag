@@ -1,6 +1,7 @@
 """
 OIDC User Management Service
 """
+
 from typing import Dict, Any, Optional
 from uuid import uuid4
 from .models import User
@@ -31,10 +32,10 @@ class OIDCUserService:
             # Update user info from latest claims (optional)
             user.email = claims.get("email", user.email)
             user.username = (
-                claims.get("preferred_username")
-                or claims.get("name")
-                or user.username
+                claims.get("preferred_username") or claims.get("name") or user.username
             )
+            # Update LDAP groups from claims
+            user.ldap_groups = claims.get("groups", [])
             await user.save()
             return user
 
@@ -47,6 +48,7 @@ class OIDCUserService:
                 user.oidc_subject = oidc_subject
                 user.auth_provider = "oidc"
                 user.password = None  # Clear password
+                user.ldap_groups = claims.get("groups", [])
                 await user.save()
                 return user
 
@@ -58,14 +60,17 @@ class OIDCUserService:
             or f"user_{oidc_subject[:8]}"
         )
 
+        # Extract LDAP groups from claims
+        groups = claims.get("groups", [])
+
         user = await User.create(
             id=uuid4(),
             username=username,
-            email=email
-            or f"{oidc_subject}@oidc.local",  # Fallback if no email claim
+            email=email or f"{oidc_subject}@oidc.local",  # Fallback if no email claim
             oidc_subject=oidc_subject,
             auth_provider="oidc",
             password=None,
+            ldap_groups=groups,
         )
 
         return user

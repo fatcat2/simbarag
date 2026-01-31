@@ -60,7 +60,7 @@ async def oidc_login():
             "client_id": oidc_config.client_id,
             "response_type": "code",
             "redirect_uri": oidc_config.redirect_uri,
-            "scope": "openid email profile",
+            "scope": "openid email profile groups",
             "state": state,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
@@ -115,7 +115,9 @@ async def oidc_callback():
         token_response = await client.post(token_endpoint, data=token_data)
 
         if token_response.status_code != 200:
-            return jsonify({"error": f"Failed to exchange code for token: {token_response.text}"}), 400
+            return jsonify(
+                {"error": f"Failed to exchange code for token: {token_response.text}"}
+            ), 400
 
         tokens = token_response.json()
 
@@ -141,7 +143,13 @@ async def oidc_callback():
     return jsonify(
         access_token=access_token,
         refresh_token=refresh_token,
-        user={"id": str(user.id), "username": user.username, "email": user.email},
+        user={
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "groups": user.ldap_groups,
+            "is_admin": user.is_admin(),
+        },
     )
 
 

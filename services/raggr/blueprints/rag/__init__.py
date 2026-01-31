@@ -2,6 +2,7 @@ from quart import Blueprint, jsonify
 from quart_jwt_extended import jwt_refresh_token_required
 
 from .logic import get_vector_store_stats, index_documents, vector_store
+from blueprints.users.decorators import admin_required
 
 rag_blueprint = Blueprint("rag_api", __name__, url_prefix="/api/rag")
 
@@ -15,9 +16,9 @@ async def get_stats():
 
 
 @rag_blueprint.post("/index")
-@jwt_refresh_token_required
+@admin_required
 async def trigger_index():
-    """Trigger indexing of documents from Paperless-NGX."""
+    """Trigger indexing of documents from Paperless-NGX. Admin only."""
     try:
         await index_documents()
         stats = get_vector_store_stats()
@@ -27,9 +28,9 @@ async def trigger_index():
 
 
 @rag_blueprint.post("/reindex")
-@jwt_refresh_token_required
+@admin_required
 async def trigger_reindex():
-    """Clear and reindex all documents."""
+    """Clear and reindex all documents. Admin only."""
     try:
         # Clear existing documents
         collection = vector_store._collection
