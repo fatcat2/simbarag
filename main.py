@@ -9,11 +9,11 @@ import ollama
 from dotenv import load_dotenv
 
 import chromadb
-from chunker import Chunker
-from cleaner import pdf_to_image, summarize_pdf_image
+from utils.chunker import Chunker
+from utils.cleaner import pdf_to_image, summarize_pdf_image
 from llm import LLMClient
-from query import QueryGenerator
-from request import PaperlessNGXService
+from scripts.query import QueryGenerator
+from utils.request import PaperlessNGXService
 
 _dotenv_loaded = load_dotenv()
 

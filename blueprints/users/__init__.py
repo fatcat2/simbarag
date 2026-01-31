@@ -7,7 +7,7 @@ from quart_jwt_extended import (
 )
 from .models import User
 from .oidc_service import OIDCUserService
-from oidc_config import oidc_config
+from config.oidc_config import oidc_config
 import secrets
 import httpx
 from urllib.parse import urlencode

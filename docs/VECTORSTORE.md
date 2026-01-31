@@ -13,21 +13,21 @@ The vector store location is controlled by the `CHROMADB_PATH` environment varia
 
 ### CLI (Command Line)
 
-Use the `manage_vectorstore.py` script for vector store operations:
+Use the `scripts/manage_vectorstore.py` script for vector store operations:
 
 ```bash
 # Show statistics
-python manage_vectorstore.py stats
+python scripts/manage_vectorstore.py stats
 
 # Index documents from Paperless-NGX (incremental)
-python manage_vectorstore.py index
+python scripts/manage_vectorstore.py index
 
 # Clear and reindex all documents
-python manage_vectorstore.py reindex
+python scripts/manage_vectorstore.py reindex
 
 # List documents
-python manage_vectorstore.py list 10
-python manage_vectorstore.py list 20 --show-content
+python scripts/manage_vectorstore.py list 10
+python scripts/manage_vectorstore.py list 20 --show-content
 ```
 
 ### Docker
@@ -36,10 +36,10 @@ Run commands inside the Docker container:
 
 ```bash
 # Show statistics
-docker compose -f docker-compose.dev.yml exec -T raggr python manage_vectorstore.py stats
+docker compose exec raggr python scripts/manage_vectorstore.py stats
 
 # Reindex all documents
-docker compose -f docker-compose.dev.yml exec -T raggr python manage_vectorstore.py reindex
+docker compose exec raggr python scripts/manage_vectorstore.py reindex
 ```
 
 ### API Endpoints
@@ -65,7 +65,7 @@ The following authenticated endpoints are available:
 This indicates a corrupted index. Solution:
 
 ```bash
-python manage_vectorstore.py reindex
+python scripts/manage_vectorstore.py reindex
 ```
 
 ### Empty results
@@ -73,20 +73,20 @@ python manage_vectorstore.py reindex
 Check if documents are indexed:
 
 ```bash
-python manage_vectorstore.py stats
+python scripts/manage_vectorstore.py stats
 ```
 
 If count is 0, run:
 
 ```bash
-python manage_vectorstore.py index
+python scripts/manage_vectorstore.py index
 ```
 
 ### Different results in Docker vs local
 
 Docker and local environments use separate ChromaDB instances. To sync:
 
-1. Index inside Docker: `docker compose exec -T raggr python manage_vectorstore.py reindex`
+1. Index inside Docker: `docker compose exec raggr python scripts/manage_vectorstore.py reindex`
 2. Or mount the same volume for both environments
 
 ## Production Considerations

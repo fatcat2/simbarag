@@ -170,11 +170,12 @@ docker compose exec raggr bash -c "sleep 5 && aerich upgrade"
 
 | File | Purpose |
 |------|---------|
-| `services/raggr/pyproject.toml` | Aerich config (`[tool.aerich]` section) |
-| `services/raggr/migrations/models/` | Migration files |
-| `services/raggr/startup.sh` | Production startup (runs `aerich upgrade`) |
-| `services/raggr/startup-dev.sh` | Dev startup (runs `aerich upgrade` or `init-db`) |
-| `services/raggr/app.py` | Contains `TORTOISE_CONFIG` |
+| `pyproject.toml` | Aerich config (`[tool.aerich]` section) |
+| `migrations/models/` | Migration files |
+| `startup.sh` | Production startup (runs `aerich upgrade`) |
+| `startup-dev.sh` | Dev startup (runs `aerich upgrade` or `init-db`) |
+| `app.py` | Contains `TORTOISE_CONFIG` |
+| `aerich_config.py` | Aerich initialization configuration |
 
 ## Quick Reference
 

@@ -20,7 +20,7 @@ services:
 
   raggr:
     build:
-      context: ./services/raggr
+      context: .
       dockerfile: Dockerfile
     image: torrtle/simbarag:latest
     ports:

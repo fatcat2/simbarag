@@ -15,53 +15,56 @@ services:
       timeout: 5s
       retries: 5
 
-  raggr:
-    build:
-      context: ./services/raggr
-      dockerfile: Dockerfile.dev
-    image: torrtle/simbarag:dev
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    environment:
-      - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
-      - BASE_URL=${BASE_URL}
-      - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
-      - CHROMADB_PATH=/app/data/chromadb
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - OIDC_ISSUER=${OIDC_ISSUER}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-      - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
-      - OIDC_USE_DISCOVERY=${OIDC_USE_DISCOVERY:-true}
-      - DATABASE_URL=postgres://raggr:raggr_dev_password@postgres:5432/raggr
-      - FLASK_ENV=development
-      - PYTHONUNBUFFERED=1
-      - NODE_ENV=development
-      - TAVILY_KEY=${TAVILIY_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - chromadb_data:/app/data/chromadb
-      - ./services/raggr/migrations:/app/migrations  # Bind mount for migrations (bidirectional)
-    develop:
-      watch:
-        # Sync+restart on any file change under services/raggr
-        - action: sync+restart
-          path: ./services/raggr
-          target: /app
-          ignore:
-            - __pycache__/
-            - "*.pyc"
-            - "*.pyo"
-            - "*.pyd"
-            - .git/
-            - chromadb/
-            - node_modules/
-            - raggr-frontend/dist/
+  # raggr service disabled - run locally for development
+  # raggr:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   image: torrtle/simbarag:dev
+  #   ports:
+  #     - "8080:8080"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
+  #     - BASE_URL=${BASE_URL}
+  #     - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
+  #     - CHROMADB_PATH=/app/data/chromadb
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - OIDC_ISSUER=${OIDC_ISSUER}
+  #     - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+  #     - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+  #     - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
+  #     - OIDC_USE_DISCOVERY=${OIDC_USE_DISCOVERY:-true}
+  #     - DATABASE_URL=postgres://raggr:raggr_dev_password@postgres:5432/raggr
+  #     - FLASK_ENV=development
+  #     - PYTHONUNBUFFERED=1
+  #     - NODE_ENV=development
+  #     - TAVILY_KEY=${TAVILIY_KEY}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   volumes:
+  #     - chromadb_data:/app/data/chromadb
+  #     - ./migrations:/app/migrations  # Bind mount for migrations (bidirectional)
+  #   develop:
+  #     watch:
+  #       # Sync+restart on any file change in root directory
+  #       - action: sync+restart
+  #         path: .
+  #         target: /app
+  #         ignore:
+  #           - __pycache__/
+  #           - "*.pyc"
+  #           - "*.pyo"
+  #           - "*.pyd"
+  #           - .git/
+  #           - chromadb/
+  #           - node_modules/
+  #           - raggr-frontend/dist/
+  #           - docs/
+  #           - .venv/
 
 volumes:
   chromadb_data:

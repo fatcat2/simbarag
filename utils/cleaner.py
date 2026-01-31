@@ -8,7 +8,7 @@ import ollama
 from PIL import Image
 import fitz
 
-from request import PaperlessNGXService
+from .request import PaperlessNGXService
 
 load_dotenv()
 

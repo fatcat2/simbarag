@@ -4,9 +4,14 @@ import sqlite3
 
 import httpx
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
 
-from image_process import describe_simba_image
-from request import PaperlessNGXService
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils.image_process import describe_simba_image
+from utils.request import PaperlessNGXService
 
 logging.basicConfig(level=logging.INFO)
 
