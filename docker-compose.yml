@@ -38,6 +38,7 @@ services:
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
       - OIDC_USE_DISCOVERY=${OIDC_USE_DISCOVERY:-true}
       - DATABASE_URL=${DATABASE_URL:-postgres://raggr:changeme@postgres:5432/raggr}
+      - TAVILY_KEY=${TAVILIY_KEY}
     depends_on:
       postgres:
         condition: service_healthy
