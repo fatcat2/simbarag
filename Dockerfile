@@ -25,6 +25,9 @@ RUN uv pip install --system -e .
 COPY *.py ./
 COPY blueprints ./blueprints
 COPY migrations ./migrations
+COPY utils ./utils
+COPY config ./config
+COPY scripts ./scripts
 COPY startup.sh ./
 RUN chmod +x startup.sh
 
