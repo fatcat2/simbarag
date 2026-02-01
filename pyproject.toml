@@ -9,7 +9,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "flask>=3.1.2",
     "httpx>=0.28.1",
-    "ollama>=0.6.0",
     "openai>=2.0.1",
     "pydantic>=2.11.9",
     "pillow>=10.0.0",
@@ -34,7 +33,6 @@ dependencies = [
     "langchain-chroma>=1.0.0",
     "langchain-community>=0.4.1",
     "jq>=1.10.0",
-    "langchain-ollama>=1.0.1",
     "tavily-python>=0.7.17",
 ]
 

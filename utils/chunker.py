@@ -3,7 +3,6 @@ from math import ceil
 import re
 from typing import Union
 from uuid import UUID, uuid4
-from ollama import Client
 from chromadb.utils.embedding_functions.openai_embedding_function import (
     OpenAIEmbeddingFunction,
 )
@@ -12,10 +11,6 @@ from llm import LLMClient
 
 
 load_dotenv()
-
-ollama_client = Client(
-    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"), timeout=1.0
-)
 
 
 def remove_headers_footers(text, header_patterns=None, footer_patterns=None):

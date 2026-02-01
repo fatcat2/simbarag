@@ -5,7 +5,6 @@ import os
 import sqlite3
 import time
 
-import ollama
 from dotenv import load_dotenv
 
 import chromadb
@@ -16,11 +15,6 @@ from scripts.query import QueryGenerator
 from utils.request import PaperlessNGXService
 
 _dotenv_loaded = load_dotenv()
-
-# Configure ollama client with URL from environment or default to localhost
-ollama_client = ollama.Client(
-    host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
-)
 
 client = chromadb.PersistentClient(path=os.getenv("CHROMADB_PATH", ""))
 simba_docs = client.get_or_create_collection(name="simba_docs2")

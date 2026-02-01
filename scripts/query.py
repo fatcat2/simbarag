@@ -1,17 +1,10 @@
 import json
-import os
 from typing import Literal
 import datetime
-from ollama import Client
 
 from openai import OpenAI
 
 from pydantic import BaseModel, Field
-
-# Configure ollama client with URL from environment or default to localhost
-ollama_client = Client(
-    host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=10.0
-)
 
 # This uses inferred filters — which means using LLM to create the metadata filters
 
