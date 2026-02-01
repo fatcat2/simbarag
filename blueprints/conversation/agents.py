@@ -4,16 +4,26 @@ from typing import cast
 from langchain.agents import create_agent
 from langchain.chat_models import BaseChatModel
 from langchain.tools import tool
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from tavily import AsyncTavilyClient
 
 from blueprints.rag.logic import query_vector_store
 
-openai_gpt_5_mini = ChatOpenAI(model="gpt-5-mini")
-ollama_deepseek = ChatOllama(model="llama3.1:8b", base_url=os.getenv("OLLAMA_URL"))
+# Configure LLM with llama-server or OpenAI fallback
+llama_url = os.getenv("LLAMA_SERVER_URL")
+if llama_url:
+    llama_chat = ChatOpenAI(
+        base_url=llama_url,
+        api_key="not-needed",
+        model=os.getenv("LLAMA_MODEL_NAME", "llama-3.1-8b-instruct"),
+    )
+else:
+    llama_chat = None
+
+openai_fallback = ChatOpenAI(model="gpt-5-mini")
 model_with_fallback = cast(
-    BaseChatModel, ollama_deepseek.with_fallbacks([openai_gpt_5_mini])
+    BaseChatModel,
+    llama_chat.with_fallbacks([openai_fallback]) if llama_chat else openai_fallback,
 )
 client = AsyncTavilyClient(os.getenv("TAVILY_KEY"), "")
 

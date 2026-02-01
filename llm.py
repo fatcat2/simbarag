@@ -1,32 +1,25 @@
 import os
-
-from ollama import Client
-from openai import OpenAI
-
 import logging
+
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 
-TRY_OLLAMA = os.getenv("TRY_OLLAMA", False)
-
 
 class LLMClient:
     def __init__(self):
-        try:
-            self.ollama_client = Client(
-                host=os.getenv("OLLAMA_URL", "http://localhost:11434"), timeout=1.0
-            )
-            self.ollama_client.chat(
-                model="gemma3:4b", messages=[{"role": "system", "content": "test"}]
-            )
-            self.PROVIDER = "ollama"
-            logging.info("Using Ollama as LLM backend")
-        except Exception as e:
-            print(e)
-            self.openai_client = OpenAI()
+        llama_url = os.getenv("LLAMA_SERVER_URL")
+        if llama_url:
+            self.client = OpenAI(base_url=llama_url, api_key="not-needed")
+            self.model = os.getenv("LLAMA_MODEL_NAME", "llama-3.1-8b-instruct")
+            self.PROVIDER = "llama_server"
+            logging.info("Using llama_server as LLM backend")
+        else:
+            self.client = OpenAI()
+            self.model = "gpt-4o-mini"
             self.PROVIDER = "openai"
             logging.info("Using OpenAI as LLM backend")
 
@@ -35,27 +28,9 @@ class LLMClient:
         prompt: str,
         system_prompt: str,
     ):
-        # Instituting a fallback if my gaming PC is not on
-        if self.PROVIDER == "ollama":
-            try:
-                response = self.ollama_client.chat(
-                    model="gemma3:4b",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": system_prompt,
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                )
-                output = response.message.content
-                return output
-            except Exception as e:
-                logging.error(f"Could not connect to OLLAMA: {str(e)}")
-
-        response = self.openai_client.responses.create(
-            model="gpt-4o-mini",
-            input=[
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
                 {
                     "role": "system",
                     "content": system_prompt,
@@ -63,11 +38,9 @@ class LLMClient:
                 {"role": "user", "content": prompt},
             ],
         )
-        output = response.output_text
-
-        return output
+        return response.choices[0].message.content
 
 
 if __name__ == "__main__":
-    client = Client()
-    client.chat(model="gemma3:4b", messages=[{"role": "system", "promp": "hack"}])
+    client = LLMClient()
+    print(client.chat(prompt="Hello!", system_prompt="You are a helpful assistant."))
