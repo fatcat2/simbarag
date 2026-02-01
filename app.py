@@ -1,5 +1,6 @@
 import os
 
+from dotenv import load_dotenv
 from quart import Quart, jsonify, render_template, request, send_from_directory
 from quart_jwt_extended import JWTManager, get_jwt_identity, jwt_refresh_token_required
 from tortoise.contrib.quart import register_tortoise
@@ -10,6 +11,9 @@ import blueprints.rag
 import blueprints.users
 import blueprints.users.models
 from main import consult_simba_oracle
+
+# Load environment variables
+load_dotenv()
 
 app = Quart(
     __name__,

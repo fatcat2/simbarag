@@ -35,12 +35,14 @@ class ConversationService {
   async sendQuery(
     query: string,
     conversation_id: string,
+    signal?: AbortSignal,
   ): Promise<QueryResponse> {
     const response = await userService.fetchWithRefreshToken(
       `${this.conversationBaseUrl}/query`,
       {
         method: "POST",
         body: JSON.stringify({ query, conversation_id }),
+        signal,
       },
     );
 

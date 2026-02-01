@@ -1,12 +1,16 @@
 import datetime
 import os
 
+from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .fetchers import PaperlessNGXService
+
+# Load environment variables
+load_dotenv()
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 

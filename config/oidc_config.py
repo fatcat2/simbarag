@@ -7,6 +7,10 @@ from typing import Dict, Any
 from authlib.jose import jwt
 from authlib.jose.errors import JoseError
 import httpx
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 class OIDCConfig:

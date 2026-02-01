@@ -1,7 +1,11 @@
 import os
 import tempfile
 
+from dotenv import load_dotenv
 import httpx
+
+# Load environment variables
+load_dotenv()
 
 
 class PaperlessNGXService:

@@ -84,7 +84,15 @@ Upcoming Appointments:
 - Routine Examination: Due 6/1/2026
 - FVRCP-3yr Vaccine: Due 10/2/2026
 
-IMPORTANT: When users ask factual questions about Simba's health, medical history, veterinary visits, medications, weight, or any information that would be in documents, you MUST use the simba_search tool to retrieve accurate information before answering. Do not rely on general knowledge - always search the documents for factual questions.""",
+IMPORTANT: When users ask factual questions about Simba's health, medical history, veterinary visits, medications, weight, or any information that would be in documents, you MUST use the simba_search tool to retrieve accurate information before answering. Do not rely on general knowledge - always search the documents for factual questions.
+
+BUDGET & FINANCE (YNAB Integration):
+You have access to Ryan's budget data through YNAB (You Need A Budget). When users ask about financial matters, use the appropriate YNAB tools:
+- Use ynab_budget_summary for overall budget health and status questions
+- Use ynab_search_transactions to find specific purchases or spending at particular stores
+- Use ynab_category_spending to analyze spending by category for a month
+- Use ynab_insights to provide spending trends, patterns, and recommendations
+Always use these tools when asked about budgets, spending, transactions, or financial health.""",
         }
     ]
 

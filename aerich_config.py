@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Database configuration with environment variable support
 # Use DATABASE_PATH for relative paths or DATABASE_URL for full connection strings

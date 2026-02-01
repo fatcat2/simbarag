@@ -43,11 +43,25 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef<boolean>(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Cleanup effect to handle component unmounting
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Abort any pending requests when component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleSelectConversation = (conversation: Conversation) => {
     setShowConversations(false);
@@ -156,10 +170,15 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       return;
     }
 
+    // Create a new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       const result = await conversationService.sendQuery(
         query,
         selectedConversation.id,
+        abortController.signal,
       );
       setQuestionsAnswers(
         questionsAnswers.concat([{ question: query, answer: result.response }]),
@@ -168,13 +187,23 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         currMessages.concat([{ text: result.response, speaker: "simba" }]),
       );
     } catch (error) {
-      console.error("Failed to send query:", error);
-      // If session expired, redirect to login
-      if (error instanceof Error && error.message.includes("Session expired")) {
-        setAuthenticated(false);
+      // Ignore abort errors (these are intentional cancellations)
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("Request was aborted");
+      } else {
+        console.error("Failed to send query:", error);
+        // If session expired, redirect to login
+        if (error instanceof Error && error.message.includes("Session expired")) {
+          setAuthenticated(false);
+        }
       }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if component is still mounted
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      // Clear the abort controller reference
+      abortControllerRef.current = null;
     }
   };
 
