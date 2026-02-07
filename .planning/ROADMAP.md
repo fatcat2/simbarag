@@ -28,10 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. IMAP connection utility can authenticate and list folders from test server
   3. Email body parser extracts text from both plain text and HTML formats
   4. Encryption utility securely stores and retrieves IMAP credentials
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Database models with encrypted credentials and migration
+- [ ] 01-02-PLAN.md — IMAP connection service and email body parser
 
 ### Phase 2: Account Management
 **Goal**: Admin users can configure and manage IMAP email accounts
@@ -88,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/1 | Not started | - |
+| 1. Foundation | 0/2 | Ready to execute | - |
 | 2. Account Management | 0/1 | Not started | - |
 | 3. Email Ingestion | 0/1 | Not started | - |
 | 4. Query Tools | 0/1 | Not started | - |
