@@ -82,13 +82,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be populated by roadmap) | | |
+| ACCT-01 | Phase 2 | Pending |
+| ACCT-02 | Phase 2 | Pending |
+| ACCT-03 | Phase 2 | Pending |
+| ACCT-04 | Phase 2 | Pending |
+| ACCT-05 | Phase 2 | Pending |
+| ACCT-06 | Phase 2 | Pending |
+| ACCT-07 | Phase 2 | Pending |
+| SYNC-01 | Phase 3 | Pending |
+| SYNC-02 | Phase 3 | Pending |
+| SYNC-03 | Phase 3 | Pending |
+| SYNC-04 | Phase 3 | Pending |
+| SYNC-05 | Phase 3 | Pending |
+| SYNC-06 | Phase 3 | Pending |
+| SYNC-07 | Phase 3 | Pending |
+| SYNC-08 | Phase 3 | Pending |
+| SYNC-09 | Phase 3 | Pending |
+| RETN-01 | Phase 3 | Pending |
+| RETN-02 | Phase 3 | Pending |
+| RETN-03 | Phase 3 | Pending |
+| RETN-04 | Phase 3 | Pending |
+| RETN-05 | Phase 3 | Pending |
+| QUERY-01 | Phase 4 | Pending |
+| QUERY-02 | Phase 4 | Pending |
+| QUERY-03 | Phase 4 | Pending |
+| QUERY-04 | Phase 4 | Pending |
+| QUERY-05 | Phase 4 | Pending |
+| QUERY-06 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-04*
-*Last updated: 2026-02-04 after initial definition*
+*Last updated: 2026-02-07 after roadmap creation*
