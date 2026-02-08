@@ -1,4 +1,5 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 from quart import Quart, jsonify, render_template, request, send_from_directory
@@ -7,6 +8,7 @@ from tortoise.contrib.quart import register_tortoise
 
 import blueprints.conversation
 import blueprints.conversation.logic
+import blueprints.email
 import blueprints.rag
 import blueprints.users
 import blueprints.users.models
@@ -14,6 +16,18 @@ from main import consult_simba_oracle
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+
+# Ensure YNAB and Mealie loggers are visible
+logging.getLogger("utils.ynab_service").setLevel(logging.INFO)
+logging.getLogger("utils.mealie_service").setLevel(logging.INFO)
+logging.getLogger("blueprints.conversation.agents").setLevel(logging.INFO)
 
 app = Quart(
     __name__,
@@ -27,6 +41,7 @@ jwt = JWTManager(app)
 # Register blueprints
 app.register_blueprint(blueprints.users.user_blueprint)
 app.register_blueprint(blueprints.conversation.conversation_blueprint)
+app.register_blueprint(blueprints.email.email_blueprint)
 app.register_blueprint(blueprints.rag.rag_blueprint)
 
 
@@ -42,6 +57,7 @@ TORTOISE_CONFIG = {
             "models": [
                 "blueprints.conversation.models",
                 "blueprints.users.models",
+                "blueprints.email.models",
                 "aerich.models",
             ]
         },

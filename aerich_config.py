@@ -16,6 +16,7 @@ TORTOISE_ORM = {
             "models": [
                 "blueprints.conversation.models",
                 "blueprints.users.models",
+                "blueprints.email.models",
                 "aerich.models",
             ],
             "default_connection": "default",
