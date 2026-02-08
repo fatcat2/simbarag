@@ -12,7 +12,7 @@ Add IMAP email ingestion to SimbaRAG's existing document/finance/meal analytics 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Database models and IMAP utilities
+- [x] **Phase 1: Foundation** - Database models and IMAP utilities
 - [ ] **Phase 2: Account Management** - Admin UI for configuring email accounts
 - [ ] **Phase 3: Email Ingestion** - Sync engine, embeddings, retention cleanup
 - [ ] **Phase 4: Query Tools** - LangChain tools for email analytics
@@ -31,8 +31,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Database models with encrypted credentials and migration
-- [ ] 01-02-PLAN.md — IMAP connection service and email body parser
+- [x] 01-01-PLAN.md — Database models with encrypted credentials and migration
+- [x] 01-02-PLAN.md — IMAP connection service and email body parser
 
 ### Phase 2: Account Management
 **Goal**: Admin users can configure and manage IMAP email accounts
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Ready to execute | - |
+| 1. Foundation | 2/2 | Complete | 2026-02-08 |
 | 2. Account Management | 0/1 | Not started | - |
 | 3. Email Ingestion | 0/1 | Not started | - |
 | 4. Query Tools | 0/1 | Not started | - |
