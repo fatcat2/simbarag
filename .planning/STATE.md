@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 4 (Foundation)
-Plan: 1 of 2 (Database Models & Encryption)
-Status: In progress
-Last activity: 2026-02-08 — Completed 01-01-PLAN.md
+Plan: 2 of 2 (IMAP Connection & Email Parsing)
+Status: Phase complete
+Last activity: 2026-02-08 — Completed 01-02-PLAN.md
 
-Progress: [█░░░░░░░░░] 12.5%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 11.6 minutes
-- Total execution time: 0.2 hours
+- Total plans completed: 2
+- Average duration: 12.3 minutes
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Foundation | 1/2 | 11.6 min | 11.6 min |
+| 1. Foundation | 2/2 | 24.6 min | 12.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (11.6 min)
-- Trend: Establishing baseline
+- Last 5 plans: 01-01 (11.6 min), 01-02 (13 min)
+- Trend: Consistent velocity (~12 min/plan)
 
 *Updated after each plan completion*
 
@@ -56,6 +56,9 @@ Recent decisions affecting current work:
 | FERNET_KEY as environment variable | 01-01 | 2026-02-08 | Simple key management, fails fast if missing |
 | Manual migration creation | 01-01 | 2026-02-08 | Docker port conflict, migration matches Aerich format |
 | 30-day expiration in model save() | 01-01 | 2026-02-08 | Business logic in domain model, consistent enforcement |
+| Use logout() not close() for IMAP | 01-02 | 2026-02-08 | Proper TCP cleanup, prevents connection leaks |
+| Prefer plain text over HTML | 01-02 | 2026-02-08 | Less boilerplate, better for RAG indexing |
+| Modern EmailMessage API | 01-02 | 2026-02-08 | Handles encoding automatically, fewer errors |
 
 ### Pending Todos
 
@@ -70,7 +73,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 14:15 UTC
-Stopped at: Completed 01-01-PLAN.md (Database Models & Encryption)
+Last session: 2026-02-08 15:01 UTC
+Stopped at: Completed 01-02-PLAN.md (IMAP Connection & Email Parsing)
 Resume file: None
-Next plan: 01-02-PLAN.md (IMAP connection service and email body parser)
+Next plan: Phase 1 complete, ready for Phase 2
