@@ -44,12 +44,12 @@ export const ConversationList = ({
   }, []);
 
   return (
-    <div className="bg-indigo-300 rounded-md p-3 sm:p-4 flex flex-col gap-1">
+    <div className="bg-stone-200 rounded-md p-3 sm:p-4 flex flex-col gap-1">
       {conservations.map((conversation) => {
         return (
           <div
             key={conversation.id}
-            className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
+            className="bg-stone-200 hover:bg-stone-300 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
             onClick={() => onSelectConversation(conversation)}
           >
             <p className="text-sm sm:text-base truncate w-full">
@@ -59,7 +59,7 @@ export const ConversationList = ({
         );
       })}
       <div
-        className="border-blue-400 bg-indigo-300 hover:bg-indigo-200 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
+        className="bg-stone-200 hover:bg-stone-300 cursor-pointer rounded-md p-3 min-h-[44px] flex items-center"
         onClick={() => onCreateNewConversation()}
       >
         <p className="text-sm sm:text-base"> + Start a new thread</p>
