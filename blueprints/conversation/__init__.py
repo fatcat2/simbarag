@@ -1,6 +1,7 @@
 import datetime
+import json
 
-from quart import Blueprint, jsonify, request
+from quart import Blueprint, jsonify, make_response, request
 from quart_jwt_extended import (
     get_jwt_identity,
     jwt_refresh_token_required,
@@ -24,35 +25,7 @@ conversation_blueprint = Blueprint(
     "conversation_api", __name__, url_prefix="/api/conversation"
 )
 
-
-@conversation_blueprint.post("/query")
-@jwt_refresh_token_required
-async def query():
-    current_user_uuid = get_jwt_identity()
-    user = await blueprints.users.models.User.get(id=current_user_uuid)
-    data = await request.get_json()
-    query = data.get("query")
-    conversation_id = data.get("conversation_id")
-    conversation = await get_conversation_by_id(conversation_id)
-    await conversation.fetch_related("messages")
-    await add_message_to_conversation(
-        conversation=conversation,
-        message=query,
-        speaker="user",
-        user=user,
-    )
-
-    # Build conversation history from recent messages (last 10 for context)
-    recent_messages = (
-        conversation.messages[-10:]
-        if len(conversation.messages) > 10
-        else conversation.messages
-    )
-
-    messages_payload = [
-        {
-            "role": "system",
-            "content": """You are a helpful cat assistant named Simba that understands veterinary terms. When there are questions to you specifically, they are referring to Simba the cat. Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.
+_SYSTEM_PROMPT = """You are a helpful cat assistant named Simba that understands veterinary terms. When there are questions to you specifically, they are referring to Simba the cat. Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.
 
 SIMBA FACTS (as of January 2026):
 - Name: Simba
@@ -92,18 +65,57 @@ You have access to Ryan's budget data through YNAB (You Need A Budget). When use
 - Use ynab_search_transactions to find specific purchases or spending at particular stores
 - Use ynab_category_spending to analyze spending by category for a month
 - Use ynab_insights to provide spending trends, patterns, and recommendations
-Always use these tools when asked about budgets, spending, transactions, or financial health.""",
-        }
-    ]
+Always use these tools when asked about budgets, spending, transactions, or financial health.
 
-    # Add recent conversation history
+NOTES & RESEARCH (Obsidian Integration):
+You have access to Ryan's Obsidian vault through the Obsidian integration. When users ask about research, personal notes, or information that might be stored in markdown files, use the appropriate Obsidian tools:
+- Use obsidian_search_notes to search through your vault for relevant information
+- Use obsidian_read_note to read the full content of a specific note by path
+- Use obsidian_create_note to save new findings, ideas, or research to your vault
+- Use obsidian_create_task to create task notes with due dates
+Always use these tools when users ask about notes, research, ideas, tasks, or when you want to save information for future reference.
+
+DAILY JOURNAL (Task Tracking):
+You have access to Ryan's daily journal notes. Each note lives at journal/YYYY/YYYY-MM-DD.md and has two sections: tasks and log.
+- Use journal_get_today to read today's full daily note (tasks + log)
+- Use journal_get_tasks to list tasks (done/pending) for today or a specific date
+- Use journal_add_task to add a new task to today's (or a given date's) note
+- Use journal_complete_task to check off a task as done
+Use these tools when Ryan asks about today's tasks, wants to add something to his list, or wants to mark a task complete."""
+
+
+def _build_messages_payload(conversation, query_text: str) -> list:
+    recent_messages = (
+        conversation.messages[-10:]
+        if len(conversation.messages) > 10
+        else conversation.messages
+    )
+    messages_payload = [{"role": "system", "content": _SYSTEM_PROMPT}]
     for msg in recent_messages[:-1]:  # Exclude the message we just added
         role = "user" if msg.speaker == "user" else "assistant"
         messages_payload.append({"role": role, "content": msg.text})
+    messages_payload.append({"role": "user", "content": query_text})
+    return messages_payload
 
-    # Add current query
-    messages_payload.append({"role": "user", "content": query})
 
+@conversation_blueprint.post("/query")
+@jwt_refresh_token_required
+async def query():
+    current_user_uuid = get_jwt_identity()
+    user = await blueprints.users.models.User.get(id=current_user_uuid)
+    data = await request.get_json()
+    query = data.get("query")
+    conversation_id = data.get("conversation_id")
+    conversation = await get_conversation_by_id(conversation_id)
+    await conversation.fetch_related("messages")
+    await add_message_to_conversation(
+        conversation=conversation,
+        message=query,
+        speaker="user",
+        user=user,
+    )
+
+    messages_payload = _build_messages_payload(conversation, query)
     payload = {"messages": messages_payload}
 
     response = await main_agent.ainvoke(payload)
@@ -115,6 +127,75 @@ Always use these tools when asked about budgets, spending, transactions, or fina
         user=user,
     )
     return jsonify({"response": message})
+
+
+@conversation_blueprint.post("/stream-query")
+@jwt_refresh_token_required
+async def stream_query():
+    current_user_uuid = get_jwt_identity()
+    user = await blueprints.users.models.User.get(id=current_user_uuid)
+    data = await request.get_json()
+    query_text = data.get("query")
+    conversation_id = data.get("conversation_id")
+    conversation = await get_conversation_by_id(conversation_id)
+    await conversation.fetch_related("messages")
+    await add_message_to_conversation(
+        conversation=conversation,
+        message=query_text,
+        speaker="user",
+        user=user,
+    )
+
+    messages_payload = _build_messages_payload(conversation, query_text)
+    payload = {"messages": messages_payload}
+
+    async def event_generator():
+        final_message = None
+        try:
+            async for event in main_agent.astream_events(payload, version="v2"):
+                event_type = event.get("event")
+
+                if event_type == "on_tool_start":
+                    yield f"data: {json.dumps({'type': 'tool_start', 'tool': event['name']})}\n\n"
+
+                elif event_type == "on_tool_end":
+                    yield f"data: {json.dumps({'type': 'tool_end', 'tool': event['name']})}\n\n"
+
+                elif event_type == "on_chain_end":
+                    output = event.get("data", {}).get("output")
+                    if isinstance(output, dict):
+                        msgs = output.get("messages", [])
+                        if msgs:
+                            last_msg = msgs[-1]
+                            content = getattr(last_msg, "content", None)
+                            if isinstance(content, str) and content:
+                                final_message = content
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        if final_message:
+            await add_message_to_conversation(
+                conversation=conversation,
+                message=final_message,
+                speaker="simba",
+                user=user,
+            )
+            yield f"data: {json.dumps({'type': 'response', 'message': final_message})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'No response generated'})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return await make_response(
+        event_generator(),
+        200,
+        {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @conversation_blueprint.route("/<conversation_id>")

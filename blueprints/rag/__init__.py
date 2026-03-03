@@ -1,7 +1,7 @@
 from quart import Blueprint, jsonify
 from quart_jwt_extended import jwt_refresh_token_required
 
-from .logic import get_vector_store_stats, index_documents, vector_store
+from .logic import fetch_obsidian_documents, get_vector_store_stats, index_documents, index_obsidian_documents, vector_store
 from blueprints.users.decorators import admin_required
 
 rag_blueprint = Blueprint("rag_api", __name__, url_prefix="/api/rag")
@@ -43,5 +43,17 @@ async def trigger_reindex():
         await index_documents()
         stats = get_vector_store_stats()
         return jsonify({"status": "success", "stats": stats})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rag_blueprint.post("/index-obsidian")
+@admin_required
+async def trigger_obsidian_index():
+    """Index all Obsidian markdown documents into vector store. Admin only."""
+    try:
+        result = await index_obsidian_documents()
+        stats = get_vector_store_stats()
+        return jsonify({"status": "success", "result": result, "stats": stats})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

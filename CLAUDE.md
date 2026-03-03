@@ -11,21 +11,21 @@ SimbaRAG is a RAG (Retrieval-Augmented Generation) conversational AI system for 
 ### Development
 
 ```bash
-# Start dev environment with hot reload
-docker compose -f docker-compose.dev.yml up --build
+# Start environment
+docker compose up --build
 
 # View logs
-docker compose -f docker-compose.dev.yml logs -f raggr
+docker compose logs -f raggr
 ```
 
 ### Database Migrations (Aerich/Tortoise ORM)
 
 ```bash
 # Generate migration (must run in Docker with DB access)
-docker compose -f docker-compose.dev.yml exec raggr aerich migrate --name describe_change
+docker compose exec raggr aerich migrate --name describe_change
 
 # Apply migrations (auto-runs on startup, manual if needed)
-docker compose -f docker-compose.dev.yml exec raggr aerich upgrade
+docker compose exec raggr aerich upgrade
 
 # View migration history
 docker compose exec raggr aerich history

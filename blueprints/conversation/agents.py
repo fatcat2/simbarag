@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from tavily import AsyncTavilyClient
 
 from blueprints.rag.logic import query_vector_store
+from utils.obsidian_service import ObsidianService
 from utils.ynab_service import YNABService
 
 # Load environment variables
@@ -39,6 +40,32 @@ try:
 except (ValueError, Exception) as e:
     print(f"YNAB service not initialized: {e}")
     ynab_enabled = False
+
+# Initialize Obsidian service (will only work if OBSIDIAN_VAULT_PATH is set)
+try:
+    obsidian_service = ObsidianService()
+    obsidian_enabled = True
+except (ValueError, Exception) as e:
+    print(f"Obsidian service not initialized: {e}")
+    obsidian_enabled = False
+
+
+@tool
+def get_current_date() -> str:
+    """Get today's date in a human-readable format.
+
+    Use this tool when you need to:
+    - Reference today's date in your response
+    - Answer questions like "what is today's date"
+    - Format dates in messages or documents
+    - Calculate time periods relative to today
+
+    Returns:
+        Today's date in YYYY-MM-DD format
+    """
+    from datetime import date
+
+    return date.today().isoformat()
 
 
 @tool
@@ -279,8 +306,291 @@ def ynab_insights(months_back: int = 3) -> str:
         return f"Error generating insights: {str(e)}"
 
 
+@tool
+async def obsidian_search_notes(query: str) -> str:
+    """Search through Obsidian vault notes for information.
+
+    Use this tool when you need to:
+    - Find information in personal notes
+    - Research past ideas or thoughts from your vault
+    - Look up information stored in markdown files
+    - Search for content that would be in your notes
+
+    Args:
+        query: The search query to look up in your Obsidian vault
+
+    Returns:
+        Relevant notes with their content and metadata
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
+
+    try:
+        # Query ChromaDB for obsidian documents
+        serialized, docs = await query_vector_store(query=query)
+        return serialized
+
+    except Exception as e:
+        return f"Error searching Obsidian notes: {str(e)}"
+
+
+@tool
+async def obsidian_read_note(relative_path: str) -> str:
+    """Read a specific note from your Obsidian vault.
+
+    Use this tool when you want to:
+    - Read the full content of a specific note
+    - Get detailed information from a particular markdown file
+    - Access content from a known note path
+
+    Args:
+        relative_path: Path to note relative to vault root (e.g., "notes/my-note.md")
+
+    Returns:
+        Full content and metadata of the requested note
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
+
+    try:
+        note = obsidian_service.read_note(relative_path)
+        content_data = note["content"]
+
+        result = f"File: {note['path']}\n\n"
+        result += f"Frontmatter:\n{content_data['metadata']}\n\n"
+        result += f"Content:\n{content_data['content']}\n\n"
+        result += f"Tags: {', '.join(content_data['tags'])}\n"
+        result += f"Contains {len(content_data['wikilinks'])} wikilinks and {len(content_data['embeds'])} embeds"
+
+        return result
+
+    except FileNotFoundError:
+        return f"Note not found at '{relative_path}'. Please check the path is correct."
+    except Exception as e:
+        return f"Error reading note: {str(e)}"
+
+
+@tool
+async def obsidian_create_note(
+    title: str,
+    content: str,
+    folder: str = "notes",
+    tags: str = "",
+) -> str:
+    """Create a new note in your Obsidian vault.
+
+    Use this tool when you want to:
+    - Save research findings or ideas to your vault
+    - Create a new document with a specific title
+    - Write notes for future reference
+
+    Args:
+        title: The title of the note (will be used as filename)
+        content: The body content of the note
+        folder: The folder where to create the note (default: "notes")
+        tags: Comma-separated list of tags to add (default: "")
+
+    Returns:
+        Path to the created note
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
+
+    try:
+        # Parse tags from comma-separated string
+        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+
+        relative_path = obsidian_service.create_note(
+            title=title,
+            content=content,
+            folder=folder,
+            tags=tag_list,
+        )
+
+        return f"Successfully created note: {relative_path}"
+
+    except Exception as e:
+        return f"Error creating note: {str(e)}"
+
+
+@tool
+def journal_get_today() -> str:
+    """Get today's daily journal note, including all tasks and log entries.
+
+    Use this tool when the user asks about:
+    - What's on their plate today
+    - Today's tasks or to-do list
+    - Today's journal entry
+    - What they've logged today
+
+    Returns:
+        The full content of today's daily note, or a message if it doesn't exist.
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured."
+
+    try:
+        note = obsidian_service.get_daily_note()
+        if not note["found"]:
+            return f"No daily note found for {note['date']}. Use journal_add_task to create one."
+        return f"Daily note for {note['date']}:\n\n{note['content']}"
+    except Exception as e:
+        return f"Error reading daily note: {str(e)}"
+
+
+@tool
+def journal_get_tasks(date: str = "") -> str:
+    """Get tasks from a daily journal note.
+
+    Use this tool when the user asks about:
+    - Open or pending tasks for a day
+    - What tasks are done or not done
+    - Task status for today or a specific date
+
+    Args:
+        date: Date in YYYY-MM-DD format (optional, defaults to today)
+
+    Returns:
+        List of tasks with their completion status.
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured."
+
+    try:
+        from datetime import datetime as dt
+
+        parsed_date = dt.strptime(date, "%Y-%m-%d") if date else None
+        result = obsidian_service.get_daily_tasks(parsed_date)
+
+        if not result["found"]:
+            return f"No daily note found for {result['date']}."
+
+        if not result["tasks"]:
+            return f"No tasks found in the {result['date']} note."
+
+        lines = [f"Tasks for {result['date']}:"]
+        for task in result["tasks"]:
+            status = "[x]" if task["done"] else "[ ]"
+            lines.append(f"- {status} {task['text']}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error reading tasks: {str(e)}"
+
+
+@tool
+def journal_add_task(task: str, date: str = "") -> str:
+    """Add a task to a daily journal note.
+
+    Use this tool when the user wants to:
+    - Add a task or to-do to today's note
+    - Remind themselves to do something
+    - Track a new item in their daily note
+
+    Args:
+        task: The task description to add
+        date: Date in YYYY-MM-DD format (optional, defaults to today)
+
+    Returns:
+        Confirmation of the added task.
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured."
+
+    try:
+        from datetime import datetime as dt
+
+        parsed_date = dt.strptime(date, "%Y-%m-%d") if date else None
+        result = obsidian_service.add_task_to_daily_note(task, parsed_date)
+
+        if result["success"]:
+            note_date = date or dt.now().strftime("%Y-%m-%d")
+            extra = " (created new note)" if result["created_note"] else ""
+            return f"Added task '{task}' to {note_date}{extra}."
+        return "Failed to add task."
+    except Exception as e:
+        return f"Error adding task: {str(e)}"
+
+
+@tool
+def journal_complete_task(task: str, date: str = "") -> str:
+    """Mark a task as complete in a daily journal note.
+
+    Use this tool when the user wants to:
+    - Check off a task as done
+    - Mark something as completed
+    - Update task status in their daily note
+
+    Args:
+        task: The task text to mark complete (exact or partial match)
+        date: Date in YYYY-MM-DD format (optional, defaults to today)
+
+    Returns:
+        Confirmation that the task was marked complete.
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured."
+
+    try:
+        from datetime import datetime as dt
+
+        parsed_date = dt.strptime(date, "%Y-%m-%d") if date else None
+        result = obsidian_service.complete_task_in_daily_note(task, parsed_date)
+
+        if result["success"]:
+            return f"Marked '{result['completed_task']}' as complete."
+        return f"Could not complete task: {result.get('error', 'unknown error')}"
+    except Exception as e:
+        return f"Error completing task: {str(e)}"
+
+
+@tool
+async def obsidian_create_task(
+    title: str,
+    content: str = "",
+    folder: str = "tasks",
+    due_date: str = "",
+    tags: str = "",
+) -> str:
+    """Create a new task note in your Obsidian vault.
+
+    Use this tool when you want to:
+    - Create a task to remember to do something
+    - Add a task with a due date
+    - Track tasks in your vault
+
+    Args:
+        title: The title of the task
+        content: The description of the task (optional)
+        folder: The folder to place the task (default: "tasks")
+        due_date: Due date in YYYY-MM-DD format (optional)
+        tags: Comma-separated list of tags to add (optional)
+
+    Returns:
+        Path to the created task note
+    """
+    if not obsidian_enabled:
+        return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
+
+    try:
+        # Parse tags from comma-separated string
+        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+
+        relative_path = obsidian_service.create_task(
+            title=title,
+            content=content,
+            folder=folder,
+            due_date=due_date or None,
+            tags=tag_list,
+        )
+
+        return f"Successfully created task: {relative_path}"
+
+    except Exception as e:
+        return f"Error creating task: {str(e)}"
+
+
 # Create tools list based on what's available
-tools = [simba_search, web_search]
+tools = [get_current_date, simba_search, web_search]
 if ynab_enabled:
     tools.extend(
         [
@@ -288,6 +598,19 @@ if ynab_enabled:
             ynab_search_transactions,
             ynab_category_spending,
             ynab_insights,
+        ]
+    )
+if obsidian_enabled:
+    tools.extend(
+        [
+            obsidian_search_notes,
+            obsidian_read_note,
+            obsidian_create_note,
+            obsidian_create_task,
+            journal_get_today,
+            journal_get_tasks,
+            journal_add_task,
+            journal_complete_task,
         ]
     )
 

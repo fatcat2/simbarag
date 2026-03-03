@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { userService } from "../api/userService";
 import { oidcService } from "../api/oidcService";
+import catIcon from "../assets/cat.png";
 
 type LoginScreenProps = {
   setAuthenticated: (isAuth: boolean) => void;
@@ -76,54 +77,77 @@ export const LoginScreen = ({ setAuthenticated }: LoginScreenProps) => {
   // Show loading state while checking authentication or processing callback
   if (isChecking || isLoggingIn) {
     return (
-      <div className="h-screen bg-opacity-20">
-        <div className="bg-white/85 h-screen flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg sm:text-xl">
-              {isLoggingIn ? "Logging in..." : "Checking authentication..."}
-            </p>
-          </div>
-        </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-cream gap-4">
+        <img
+          src={catIcon}
+          alt="Simba"
+          className="w-16 h-16 animate-bounce"
+        />
+        <p className="text-warm-gray font-medium text-lg tracking-wide">
+          {isLoggingIn ? "letting you in..." : "checking credentials..."}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-opacity-20">
-      <div className="bg-white/85 h-screen">
-        <div className="flex flex-row justify-center py-4">
-          <div className="flex flex-col gap-4 w-full px-4 sm:w-11/12 sm:max-w-2xl lg:max-w-4xl sm:px-0">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-grow justify-center w-full bg-amber-400 p-2">
-                <h1 className="text-base sm:text-xl font-bold text-center">
-                  I AM LOOKING FOR A DESIGNER. THIS APP WILL REMAIN UGLY UNTIL A
-                  DESIGNER COMES.
-                </h1>
-              </div>
-              <header className="flex flex-row justify-center gap-2 grow sticky top-0 z-10 bg-white">
-                <h1 className="text-2xl sm:text-3xl">ask simba!</h1>
-              </header>
+    <div className="h-screen bg-cream flex items-center justify-center p-4">
+      {/* Decorative background texture */}
+      <div className="fixed inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--color-charcoal) 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }}
+      />
 
-              {error && (
-                <div className="text-red-600 font-semibold text-sm sm:text-base bg-red-50 p-3 rounded-md">
-                  {error}
-                </div>
-              )}
-
-              <div className="text-center text-sm sm:text-base text-gray-600 py-2">
-                Click below to login with Authelia
-              </div>
-            </div>
-
-            <button
-              className="p-3 sm:p-4 min-h-[44px] border border-blue-400 bg-blue-200 hover:bg-blue-400 cursor-pointer rounded-md flex-grow text-sm sm:text-base font-semibold"
-              onClick={handleOIDCLogin}
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Redirecting..." : "Login with Authelia"}
-            </button>
+      <div className="relative w-full max-w-sm">
+        {/* Cat icon & branding */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="relative mb-4">
+            <div className="absolute -inset-3 bg-amber-soft/40 rounded-full blur-xl" />
+            <img
+              src={catIcon}
+              alt="Simba"
+              className="relative w-20 h-20 drop-shadow-lg"
+            />
           </div>
+          <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-charcoal tracking-tight">
+            asksimba
+          </h1>
+          <p className="text-warm-gray text-sm mt-1.5 tracking-wide">
+            your feline knowledge companion
+          </p>
         </div>
+
+        {/* Login card */}
+        <div className="bg-warm-white rounded-2xl shadow-lg shadow-sand/40 border border-sand-light/60 p-8">
+          {error && (
+            <div className="mb-4 text-sm bg-red-50 text-red-700 p-3 rounded-xl border border-red-200">
+              {error}
+            </div>
+          )}
+
+          <p className="text-center text-warm-gray text-sm mb-6">
+            Sign in to start chatting with Simba
+          </p>
+
+          <button
+            className="w-full py-3.5 px-4 bg-forest text-white font-semibold rounded-xl
+              hover:bg-forest-light transition-all duration-200
+              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
+              shadow-md shadow-forest/20 hover:shadow-lg hover:shadow-forest/30
+              cursor-pointer text-sm tracking-wide"
+            onClick={handleOIDCLogin}
+            disabled={isLoggingIn}
+          >
+            {isLoggingIn ? "Redirecting..." : "Sign in with Authelia"}
+          </button>
+        </div>
+
+        {/* Footer paw prints */}
+        <p className="text-center text-sand mt-6 text-xs tracking-widest select-none">
+          ~ meow ~
+        </p>
       </div>
     </div>
   );

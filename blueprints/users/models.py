@@ -10,6 +10,7 @@ class User(Model):
     username = fields.CharField(max_length=255)
     password = fields.BinaryField(null=True)  # Hashed - nullable for OIDC users
     email = fields.CharField(max_length=100, unique=True)
+    whatsapp_number = fields.CharField(max_length=30, unique=True, null=True, index=True)
 
     # OIDC fields
     oidc_subject = fields.CharField(
