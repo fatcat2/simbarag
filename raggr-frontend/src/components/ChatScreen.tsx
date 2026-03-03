@@ -2,13 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { conversationService } from "../api/conversationService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
+import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
 import catIcon from "../assets/cat.png";
 
 type Message = {
   text: string;
-  speaker: "simba" | "user";
+  speaker: "simba" | "user" | "tool";
 };
 
 type QuestionAnswer = {
@@ -23,6 +24,24 @@ type Conversation = {
 
 type ChatScreenProps = {
   setAuthenticated: (isAuth: boolean) => void;
+};
+
+const TOOL_MESSAGES: Record<string, string> = {
+  simba_search: "🔍 Searching Simba's records...",
+  web_search: "🌐 Searching the web...",
+  get_current_date: "📅 Checking today's date...",
+  ynab_budget_summary: "💰 Checking budget summary...",
+  ynab_search_transactions: "💳 Looking up transactions...",
+  ynab_category_spending: "📊 Analyzing category spending...",
+  ynab_insights: "📈 Generating budget insights...",
+  obsidian_search_notes: "📝 Searching notes...",
+  obsidian_read_note: "📖 Reading note...",
+  obsidian_create_note: "✏️ Saving note...",
+  obsidian_create_task: "✅ Creating task...",
+  journal_get_today: "📔 Reading today's journal...",
+  journal_get_tasks: "📋 Getting tasks...",
+  journal_add_task: "➕ Adding task...",
+  journal_complete_task: "✔️ Completing task...",
 };
 
 export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
@@ -170,16 +189,24 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     abortControllerRef.current = abortController;
 
     try {
-      const result = await conversationService.sendQuery(
+      await conversationService.streamQuery(
         query,
         selectedConversation.id,
+        (event) => {
+          if (!isMountedRef.current) return;
+          if (event.type === "tool_start") {
+            const friendly =
+              TOOL_MESSAGES[event.tool] ?? `🔧 Using ${event.tool}...`;
+            setMessages((prev) => prev.concat([{ text: friendly, speaker: "tool" }]));
+          } else if (event.type === "response") {
+            setMessages((prev) =>
+              prev.concat([{ text: event.message, speaker: "simba" }]),
+            );
+          } else if (event.type === "error") {
+            console.error("Stream error:", event.message);
+          }
+        },
         abortController.signal,
-      );
-      setQuestionsAnswers(
-        questionsAnswers.concat([{ question: query, answer: result.response }]),
-      );
-      setMessages(
-        currMessages.concat([{ text: result.response, speaker: "simba" }]),
       );
     } catch (error) {
       // Ignore abort errors (these are intentional cancellations)
@@ -348,9 +375,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             )}
 
             {messages.map((msg, index) => {
-              if (msg.speaker === "simba") {
+              if (msg.speaker === "tool")
+                return <ToolBubble key={index} text={msg.text} />;
+              if (msg.speaker === "simba")
                 return <AnswerBubble key={index} text={msg.text} />;
-              }
               return <QuestionBubble key={index} text={msg.text} />;
             })}
             {isLoading && <AnswerBubble text="" loading={true} />}

@@ -1,5 +1,13 @@
 import { userService } from "./userService";
 
+export type SSEEvent =
+  | { type: "tool_start"; tool: string }
+  | { type: "tool_end"; tool: string }
+  | { type: "response"; message: string }
+  | { type: "error"; message: string };
+
+export type SSEEventCallback = (event: SSEEvent) => void;
+
 interface Message {
   id: string;
   text: string;
@@ -111,6 +119,59 @@ class ConversationService {
     }
 
     return await response.json();
+  }
+
+  async streamQuery(
+    query: string,
+    conversation_id: string,
+    onEvent: SSEEventCallback,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const response = await userService.fetchWithRefreshToken(
+      `${this.conversationBaseUrl}/stream-query`,
+      {
+        method: "POST",
+        body: JSON.stringify({ query, conversation_id }),
+        signal,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to stream query");
+    }
+
+    await this._readSSEStream(response, onEvent);
+  }
+
+  private async _readSSEStream(
+    response: Response,
+    onEvent: SSEEventCallback,
+  ): Promise<void> {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") return;
+        try {
+          const event = JSON.parse(data) as SSEEvent;
+          onEvent(event);
+        } catch {
+          // ignore malformed events
+        }
+      }
+    }
   }
 }
 
