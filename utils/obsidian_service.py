@@ -323,7 +323,7 @@ class ObsidianService:
             note_path.parent.mkdir(parents=True, exist_ok=True)
             content = (
                 f"---\nmodified: {datetime.now().isoformat()}\n---\n"
-                f"###  tasks\n\n- [ ] {task_text}\n\n### log\n"
+                f"### tasks\n\n- [ ] {task_text}\n\n### log\n"
             )
             with open(note_path, "w", encoding="utf-8") as f:
                 f.write(content)
