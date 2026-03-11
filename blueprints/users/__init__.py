@@ -7,6 +7,7 @@ from quart_jwt_extended import (
 )
 from .models import User
 from .oidc_service import OIDCUserService
+from .decorators import admin_required
 from config.oidc_config import oidc_config
 import secrets
 import httpx
@@ -131,6 +132,21 @@ async def oidc_callback():
     except Exception as e:
         return jsonify({"error": f"ID token verification failed: {str(e)}"}), 400
 
+    # Fetch userinfo to get groups (older Authelia versions only include groups there)
+    userinfo_endpoint = discovery.get("userinfo_endpoint")
+    if userinfo_endpoint:
+        access_token_str = tokens.get("access_token")
+        if access_token_str:
+            async with httpx.AsyncClient() as client:
+                userinfo_response = await client.get(
+                    userinfo_endpoint,
+                    headers={"Authorization": f"Bearer {access_token_str}"},
+                )
+                if userinfo_response.status_code == 200:
+                    userinfo = userinfo_response.json()
+                    if "groups" in userinfo and "groups" not in claims:
+                        claims["groups"] = userinfo["groups"]
+
     # Get or create user from OIDC claims
     user = await OIDCUserService.get_or_create_user_from_oidc(claims)
 
@@ -186,3 +202,73 @@ async def login():
         refresh_token=refresh_token,
         user={"id": str(user.id), "username": user.username},
     )
+
+
+@user_blueprint.route("/me", methods=["GET"])
+@jwt_refresh_token_required
+async def me():
+    user_id = get_jwt_identity()
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "is_admin": user.is_admin(),
+    })
+
+
+@user_blueprint.route("/admin/users", methods=["GET"])
+@admin_required
+async def list_users():
+    users = await User.all().order_by("username")
+    return jsonify([
+        {
+            "id": str(u.id),
+            "username": u.username,
+            "email": u.email,
+            "whatsapp_number": u.whatsapp_number,
+            "auth_provider": u.auth_provider,
+        }
+        for u in users
+    ])
+
+
+@user_blueprint.route("/admin/users/<user_id>/whatsapp", methods=["PUT"])
+@admin_required
+async def set_whatsapp(user_id):
+    data = await request.get_json()
+    number = (data or {}).get("whatsapp_number", "").strip()
+    if not number:
+        return jsonify({"error": "whatsapp_number is required"}), 400
+
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    conflict = await User.filter(whatsapp_number=number).exclude(id=user_id).first()
+    if conflict:
+        return jsonify({"error": "That WhatsApp number is already linked to another account"}), 409
+
+    user.whatsapp_number = number
+    await user.save()
+    return jsonify({
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "whatsapp_number": user.whatsapp_number,
+        "auth_provider": user.auth_provider,
+    })
+
+
+@user_blueprint.route("/admin/users/<user_id>/whatsapp", methods=["DELETE"])
+@admin_required
+async def unlink_whatsapp(user_id):
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.whatsapp_number = None
+    await user.save()
+    return jsonify({"ok": True})

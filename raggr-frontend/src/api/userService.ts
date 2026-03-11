@@ -134,6 +134,48 @@ class UserService {
 
     return response;
   }
+
+  async getMe(): Promise<{ id: string; username: string; email: string; is_admin: boolean }> {
+    const response = await this.fetchWithRefreshToken(`${this.baseUrl}/me`);
+    if (!response.ok) throw new Error("Failed to fetch user profile");
+    return response.json();
+  }
+
+  async adminListUsers(): Promise<AdminUserRecord[]> {
+    const response = await this.fetchWithRefreshToken(`${this.baseUrl}/admin/users`);
+    if (!response.ok) throw new Error("Failed to list users");
+    return response.json();
+  }
+
+  async adminSetWhatsapp(userId: string, number: string): Promise<AdminUserRecord> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/whatsapp`,
+      { method: "PUT", body: JSON.stringify({ whatsapp_number: number }) },
+    );
+    if (response.status === 409) {
+      const data = await response.json();
+      throw new Error(data.error ?? "WhatsApp number already in use");
+    }
+    if (!response.ok) throw new Error("Failed to set WhatsApp number");
+    return response.json();
+  }
+
+  async adminUnlinkWhatsapp(userId: string): Promise<void> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/whatsapp`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) throw new Error("Failed to unlink WhatsApp number");
+  }
 }
 
+export interface AdminUserRecord {
+  id: string;
+  username: string;
+  email: string;
+  whatsapp_number: string | null;
+  auth_provider: string;
+}
+
+export { UserService };
 export const userService = new UserService();

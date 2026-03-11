@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { conversationService } from "../api/conversationService";
+import { userService } from "../api/userService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
 import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
+import { AdminPanel } from "./AdminPanel";
 import catIcon from "../assets/cat.png";
 
 type Message = {
@@ -60,6 +62,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     useState<Conversation | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [showAdminPanel, setShowAdminPanel] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef<boolean>(true);
@@ -129,6 +133,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
 
   useEffect(() => {
     loadConversations();
+    userService.getMe().then((me) => setIsAdmin(me.is_admin)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -171,15 +176,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     if (simbaMode) {
       const randomIndex = Math.floor(Math.random() * simbaAnswers.length);
       const randomElement = simbaAnswers[randomIndex];
-      setAnswer(randomElement);
-      setQuestionsAnswers(
-        questionsAnswers.concat([
-          {
-            question: query,
-            answer: randomElement,
-          },
-        ]),
-      );
+      setMessages((prev) => prev.concat([{ text: randomElement, speaker: "simba" }]));
       setIsLoading(false);
       return;
     }
@@ -282,6 +279,14 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
 
             {/* Logout */}
             <div className="px-3 pb-4 pt-2 border-t border-white/10">
+              {isAdmin && (
+                <button
+                  className="w-full py-2.5 px-3 text-sm text-cream/60 hover:text-cream hover:bg-white/5 rounded-lg transition-all duration-200 cursor-pointer"
+                  onClick={() => setShowAdminPanel(true)}
+                >
+                  Admin
+                </button>
+              )}
               <button
                 className="w-full py-2.5 px-3 text-sm text-cream/60 hover:text-cream hover:bg-white/5
                   rounded-lg transition-all duration-200 cursor-pointer"
@@ -302,6 +307,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
           </div>
         )}
       </aside>
+
+      {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
