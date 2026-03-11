@@ -94,7 +94,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       const fetched = await conversationService.getAllConversations();
       const parsed = fetched.map((c) => ({ id: c.id, title: c.name }));
       setConversations(parsed);
-      setSelectedConversation(parsed[0] ?? null);
     } catch (err) {
       console.error("Failed to load conversations:", err);
     }
@@ -132,6 +131,14 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const handleQuestionSubmit = async () => {
     if (!query.trim() || isLoading) return;
 
+    let activeConversation = selectedConversation;
+    if (!activeConversation) {
+      const newConv = await conversationService.createConversation();
+      activeConversation = { title: newConv.name, id: newConv.id };
+      setSelectedConversation(activeConversation);
+      setConversations((prev) => [activeConversation!, ...prev]);
+    }
+
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
     setQuery("");
@@ -150,7 +157,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     try {
       await conversationService.streamQuery(
         query,
-        selectedConversation!.id,
+        activeConversation.id,
         (event) => {
           if (!isMountedRef.current) return;
           if (event.type === "tool_start") {
@@ -309,21 +316,12 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
           </div>
         </header>
 
-        {/* Conversation title bar */}
-        {selectedConversation && (
-          <div className="bg-warm-white/80 backdrop-blur-sm border-b border-sand-light/50 px-6 py-2.5">
-            <p className="text-xs font-semibold text-warm-gray truncate max-w-2xl mx-auto uppercase tracking-wider">
-              {selectedConversation.title || "Untitled Conversation"}
-            </p>
-          </div>
-        )}
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto flex flex-col gap-3">
+        {messages.length === 0 ? (
+          /* ── Empty / homepage state ── */
+          <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
             {/* Mobile conversation drawer */}
             {showConversations && (
-              <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
+              <div className="md:hidden w-full max-w-2xl bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                 <ConversationList
                   conversations={conversations}
                   onCreateNewConversation={handleCreateNewConversation}
@@ -332,50 +330,71 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 />
               </div>
             )}
+            <div className="relative">
+              <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
+              <img src={catIcon} alt="Simba" className="relative w-20 h-20" />
+            </div>
+            <h1
+              className="text-2xl font-bold text-charcoal"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Ask me anything
+            </h1>
+            <div className="w-full max-w-2xl">
+              <MessageInput
+                query={query}
+                handleQueryChange={handleQueryChange}
+                handleKeyDown={handleKeyDown}
+                handleQuestionSubmit={handleQuestionSubmit}
+                setSimbaMode={setSimbaMode}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+        ) : (
+          /* ── Active chat state ── */
+          <>
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <div className="max-w-2xl mx-auto flex flex-col gap-3">
+                {/* Mobile conversation drawer */}
+                {showConversations && (
+                  <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
+                    <ConversationList
+                      conversations={conversations}
+                      onCreateNewConversation={handleCreateNewConversation}
+                      onSelectConversation={handleSelectConversation}
+                      selectedId={selectedConversation?.id}
+                    />
+                  </div>
+                )}
 
-            {/* Empty state */}
-            {messages.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-24 gap-5">
-                <div className="relative">
-                  <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
-                  <img
-                    src={catIcon}
-                    alt="Simba"
-                    className="relative w-16 h-16 opacity-50"
-                  />
-                </div>
-                <p className="text-warm-gray/60 text-sm">
-                  Ask Simba anything
-                </p>
+                {messages.map((msg, index) => {
+                  if (msg.speaker === "tool")
+                    return <ToolBubble key={index} text={msg.text} />;
+                  if (msg.speaker === "simba")
+                    return <AnswerBubble key={index} text={msg.text} />;
+                  return <QuestionBubble key={index} text={msg.text} />;
+                })}
+
+                {isLoading && <AnswerBubble text="" loading={true} />}
+                <div ref={messagesEndRef} />
               </div>
-            )}
+            </div>
 
-            {messages.map((msg, index) => {
-              if (msg.speaker === "tool")
-                return <ToolBubble key={index} text={msg.text} />;
-              if (msg.speaker === "simba")
-                return <AnswerBubble key={index} text={msg.text} />;
-              return <QuestionBubble key={index} text={msg.text} />;
-            })}
-
-            {isLoading && <AnswerBubble text="" loading={true} />}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-
-        {/* Input */}
-        <footer className="border-t border-sand-light/40 bg-cream/80 backdrop-blur-sm">
-          <div className="max-w-2xl mx-auto px-4 py-3">
-            <MessageInput
-              query={query}
-              handleQueryChange={handleQueryChange}
-              handleKeyDown={handleKeyDown}
-              handleQuestionSubmit={handleQuestionSubmit}
-              setSimbaMode={setSimbaMode}
-              isLoading={isLoading}
-            />
-          </div>
-        </footer>
+            <footer className="border-t border-sand-light/40 bg-cream/80 backdrop-blur-sm">
+              <div className="max-w-2xl mx-auto px-4 py-3">
+                <MessageInput
+                  query={query}
+                  handleQueryChange={handleQueryChange}
+                  handleKeyDown={handleKeyDown}
+                  handleQuestionSubmit={handleQuestionSubmit}
+                  setSimbaMode={setSimbaMode}
+                  isLoading={isLoading}
+                />
+              </div>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );
