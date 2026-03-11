@@ -1,10 +1,13 @@
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
+import { ArrowUp } from "lucide-react";
+import { cn } from "../lib/utils";
+import { Textarea } from "./ui/textarea";
 
 type MessageInputProps = {
   handleQueryChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleKeyDown: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleQuestionSubmit: () => void;
-  setSimbaMode: (sdf: boolean) => void;
+  setSimbaMode: (val: boolean) => void;
   query: string;
   isLoading: boolean;
 };
@@ -17,39 +20,64 @@ export const MessageInput = ({
   setSimbaMode,
   isLoading,
 }: MessageInputProps) => {
+  const [simbaMode, setLocalSimbaMode] = useState(false);
+
+  const toggleSimbaMode = () => {
+    const next = !simbaMode;
+    setLocalSimbaMode(next);
+    setSimbaMode(next);
+  };
+
   return (
-    <div className="flex flex-col gap-4 sticky bottom-0 bg-[#3D763A] p-6 rounded-xl">
-      <div className="flex flex-row justify-between grow">
-        <textarea
-          className="p-3 sm:p-4 border border-blue-200 rounded-md grow bg-[#F9F5EB] min-h-[44px] resize-y"
-          onChange={handleQueryChange}
-          onKeyDown={handleKeyDown}
-          value={query}
-          rows={2}
-          placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-        />
-      </div>
-      <div className="flex flex-row justify-between gap-2 grow">
+    <div
+      className={cn(
+        "rounded-2xl bg-warm-white border border-sand shadow-md shadow-sand/30",
+        "transition-shadow duration-200 focus-within:shadow-lg focus-within:shadow-amber-soft/20",
+        "focus-within:border-amber-soft/60",
+      )}
+    >
+      {/* Textarea */}
+      <Textarea
+        onChange={handleQueryChange}
+        onKeyDown={handleKeyDown}
+        value={query}
+        rows={2}
+        placeholder="Ask Simba anything..."
+        className="min-h-[60px] max-h-40"
+      />
+
+      {/* Bottom toolbar */}
+      <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+        {/* Simba mode toggle */}
         <button
-          className={`p-3 sm:p-4 min-h-[44px] border border-blue-400 rounded-md flex-grow text-sm sm:text-base ${
-            isLoading
-              ? "bg-gray-400 cursor-not-allowed opacity-50"
-              : "bg-[#EDA541] hover:bg-blue-400 cursor-pointer"
-          }`}
-          onClick={() => handleQuestionSubmit()}
-          type="submit"
-          disabled={isLoading}
+          type="button"
+          onClick={toggleSimbaMode}
+          className="flex items-center gap-2 group cursor-pointer select-none"
         >
-          {isLoading ? "Sending..." : "Submit"}
+          <div className={cn("toggle-track", simbaMode && "checked")}>
+            <div className="toggle-thumb" />
+          </div>
+          <span className="text-xs text-warm-gray group-hover:text-charcoal transition-colors">
+            simba mode
+          </span>
         </button>
-      </div>
-      <div className="flex flex-row justify-center gap-2 grow items-center">
-        <input
-          type="checkbox"
-          onChange={(event) => setSimbaMode(event.target.checked)}
-          className="w-5 h-5 cursor-pointer"
-        />
-        <p className="text-sm sm:text-base">simba mode?</p>
+
+        {/* Send button */}
+        <button
+          type="submit"
+          onClick={handleQuestionSubmit}
+          disabled={isLoading || !query.trim()}
+          className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center",
+            "transition-all duration-200 cursor-pointer",
+            "shadow-sm",
+            isLoading || !query.trim()
+              ? "bg-sand text-warm-gray/50 cursor-not-allowed shadow-none"
+              : "bg-amber-glow text-white hover:bg-amber-dark hover:shadow-md hover:shadow-amber-glow/30 active:scale-95",
+          )}
+        >
+          <ArrowUp size={15} strokeWidth={2.5} />
+        </button>
       </div>
     </div>
   );

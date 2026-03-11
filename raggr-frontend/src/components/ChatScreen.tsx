@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { LogOut, Shield, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { conversationService } from "../api/conversationService";
 import { userService } from "../api/userService";
 import { QuestionBubble } from "./QuestionBubble";
@@ -7,16 +8,12 @@ import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
 import { AdminPanel } from "./AdminPanel";
+import { cn } from "../lib/utils";
 import catIcon from "../assets/cat.png";
 
 type Message = {
   text: string;
   speaker: "simba" | "user" | "tool";
-};
-
-type QuestionAnswer = {
-  question: string;
-  answer: string;
 };
 
 type Conversation = {
@@ -48,15 +45,9 @@ const TOOL_MESSAGES: Record<string, string> = {
 
 export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [query, setQuery] = useState<string>("");
-  const [answer, setAnswer] = useState<string>("");
   const [simbaMode, setSimbaMode] = useState<boolean>(false);
-  const [questionsAnswers, setQuestionsAnswers] = useState<QuestionAnswer[]>(
-    [],
-  );
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([
-    { title: "simba meow meow", id: "uuid" },
-  ]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showConversations, setShowConversations] = useState<boolean>(false);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
@@ -74,61 +65,45 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Cleanup effect to handle component unmounting
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Abort any pending requests when component unmounts
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      abortControllerRef.current?.abort();
     };
   }, []);
 
   const handleSelectConversation = (conversation: Conversation) => {
     setShowConversations(false);
     setSelectedConversation(conversation);
-    const loadMessages = async () => {
+    const load = async () => {
       try {
-        const fetchedConversation = await conversationService.getConversation(
-          conversation.id,
-        );
+        const fetched = await conversationService.getConversation(conversation.id);
         setMessages(
-          fetchedConversation.messages.map((message) => ({
-            text: message.text,
-            speaker: message.speaker,
-          })),
+          fetched.messages.map((m) => ({ text: m.text, speaker: m.speaker })),
         );
-      } catch (error) {
-        console.error("Failed to load messages:", error);
+      } catch (err) {
+        console.error("Failed to load messages:", err);
       }
     };
-    loadMessages();
+    load();
   };
 
   const loadConversations = async () => {
     try {
-      const fetchedConversations =
-        await conversationService.getAllConversations();
-      const parsedConversations = fetchedConversations.map((conversation) => ({
-        id: conversation.id,
-        title: conversation.name,
-      }));
-      setConversations(parsedConversations);
-      setSelectedConversation(parsedConversations[0]);
-    } catch (error) {
-      console.error("Failed to load messages:", error);
+      const fetched = await conversationService.getAllConversations();
+      const parsed = fetched.map((c) => ({ id: c.id, title: c.name }));
+      setConversations(parsed);
+      setSelectedConversation(parsed[0] ?? null);
+    } catch (err) {
+      console.error("Failed to load conversations:", err);
     }
   };
 
   const handleCreateNewConversation = async () => {
-    const newConversation = await conversationService.createConversation();
+    const newConv = await conversationService.createConversation();
     await loadConversations();
-    setSelectedConversation({
-      title: newConversation.name,
-      id: newConversation.id,
-    });
+    setSelectedConversation({ title: newConv.name, id: newConv.id });
   };
 
   useEffect(() => {
@@ -141,64 +116,48 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [messages]);
 
   useEffect(() => {
-    const loadMessages = async () => {
-      if (selectedConversation == null) return;
+    const load = async () => {
+      if (!selectedConversation) return;
       try {
-        const conversation = await conversationService.getConversation(
-          selectedConversation.id,
-        );
-        // Update the conversation title in case it changed
-        setSelectedConversation({
-          id: conversation.id,
-          title: conversation.name,
-        });
-        setMessages(
-          conversation.messages.map((message) => ({
-            text: message.text,
-            speaker: message.speaker,
-          })),
-        );
-      } catch (error) {
-        console.error("Failed to load messages:", error);
+        const conv = await conversationService.getConversation(selectedConversation.id);
+        setSelectedConversation({ id: conv.id, title: conv.name });
+        setMessages(conv.messages.map((m) => ({ text: m.text, speaker: m.speaker })));
+      } catch (err) {
+        console.error("Failed to load messages:", err);
       }
     };
-    loadMessages();
+    load();
   }, [selectedConversation?.id]);
 
   const handleQuestionSubmit = async () => {
-    if (!query.trim() || isLoading) return; // Don't submit empty messages or while loading
+    if (!query.trim() || isLoading) return;
 
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
-    setQuery(""); // Clear input immediately after submission
+    setQuery("");
     setIsLoading(true);
 
     if (simbaMode) {
-      const randomIndex = Math.floor(Math.random() * simbaAnswers.length);
-      const randomElement = simbaAnswers[randomIndex];
+      const randomElement = simbaAnswers[Math.floor(Math.random() * simbaAnswers.length)];
       setMessages((prev) => prev.concat([{ text: randomElement, speaker: "simba" }]));
       setIsLoading(false);
       return;
     }
 
-    // Create a new AbortController for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     try {
       await conversationService.streamQuery(
         query,
-        selectedConversation.id,
+        selectedConversation!.id,
         (event) => {
           if (!isMountedRef.current) return;
           if (event.type === "tool_start") {
-            const friendly =
-              TOOL_MESSAGES[event.tool] ?? `🔧 Using ${event.tool}...`;
+            const friendly = TOOL_MESSAGES[event.tool] ?? `🔧 Using ${event.tool}...`;
             setMessages((prev) => prev.concat([{ text: friendly, speaker: "tool" }]));
           } else if (event.type === "response") {
-            setMessages((prev) =>
-              prev.concat([{ text: event.message, speaker: "simba" }]),
-            );
+            setMessages((prev) => prev.concat([{ text: event.message, speaker: "simba" }]));
           } else if (event.type === "error") {
             console.error("Stream error:", event.message);
           }
@@ -206,22 +165,16 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         abortController.signal,
       );
     } catch (error) {
-      // Ignore abort errors (these are intentional cancellations)
       if (error instanceof Error && error.name === "AbortError") {
         console.log("Request was aborted");
       } else {
         console.error("Failed to send query:", error);
-        // If session expired, redirect to login
         if (error instanceof Error && error.message.includes("Session expired")) {
           setAuthenticated(false);
         }
       }
     } finally {
-      // Only update loading state if component is still mounted
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-      // Clear the abort controller reference
+      if (isMountedRef.current) setIsLoading(false);
       abortControllerRef.current = null;
     }
   };
@@ -230,10 +183,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     setQuery(event.target.value);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter, but allow Shift+Enter for new line
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
+  const handleKeyDown = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const kev = event as unknown as React.KeyboardEvent<HTMLTextAreaElement>;
+    if (kev.key === "Enter" && !kev.shiftKey) {
+      kev.preventDefault();
       handleQuestionSubmit();
     }
   };
@@ -245,30 +198,54 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   };
 
   return (
-    <div className="h-screen flex flex-row bg-cream">
-      {/* Sidebar */}
+    <div className="h-screen flex flex-row bg-cream overflow-hidden">
+      {/* ── Desktop Sidebar ─────────────────────────────── */}
       <aside
-        className={`hidden md:flex md:flex-col bg-sidebar-bg transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? "w-[68px]" : "w-72"
-        }`}
+        className={cn(
+          "hidden md:flex md:flex-col",
+          "bg-sidebar-bg transition-all duration-300 ease-in-out",
+          sidebarCollapsed ? "w-[56px]" : "w-64",
+        )}
       >
-        {!sidebarCollapsed ? (
+        {sidebarCollapsed ? (
+          /* Collapsed state */
+          <div className="flex flex-col items-center py-4 gap-4 h-full">
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-cream/50 hover:text-cream hover:bg-white/10 transition-all cursor-pointer"
+            >
+              <PanelLeftOpen size={18} />
+            </button>
+            <img
+              src={catIcon}
+              alt="Simba"
+              className="w-7 h-7 opacity-70 mt-1"
+            />
+          </div>
+        ) : (
+          /* Expanded state */
           <div className="flex flex-col h-full">
-            {/* Sidebar header */}
-            <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-              <img
-                src={catIcon}
-                alt="Simba"
-                className="w-9 h-9 cursor-pointer hover:scale-110 transition-transform duration-200 flex-shrink-0"
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
+              <div className="flex items-center gap-2.5">
+                <img src={catIcon} alt="Simba" className="w-7 h-7" />
+                <h2
+                  className="text-lg font-bold text-cream tracking-tight"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  asksimba
+                </h2>
+              </div>
+              <button
                 onClick={() => setSidebarCollapsed(true)}
-              />
-              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-cream tracking-tight">
-                asksimba
-              </h2>
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-cream/40 hover:text-cream hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <PanelLeftClose size={15} />
+              </button>
             </div>
 
             {/* Conversations */}
-            <div className="flex-1 overflow-y-auto px-3 py-3">
+            <div className="flex-1 overflow-y-auto px-2 py-3">
               <ConversationList
                 conversations={conversations}
                 onCreateNewConversation={handleCreateNewConversation}
@@ -277,82 +254,76 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               />
             </div>
 
-            {/* Logout */}
-            <div className="px-3 pb-4 pt-2 border-t border-white/10">
+            {/* Footer */}
+            <div className="px-2 pb-3 pt-2 border-t border-white/8 flex flex-col gap-0.5">
               {isAdmin && (
                 <button
-                  className="w-full py-2.5 px-3 text-sm text-cream/60 hover:text-cream hover:bg-white/5 rounded-lg transition-all duration-200 cursor-pointer"
                   onClick={() => setShowAdminPanel(true)}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
                 >
-                  Admin
+                  <Shield size={14} />
+                  <span>Admin</span>
                 </button>
               )}
               <button
-                className="w-full py-2.5 px-3 text-sm text-cream/60 hover:text-cream hover:bg-white/5
-                  rounded-lg transition-all duration-200 cursor-pointer"
                 onClick={handleLogout}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
               >
-                Sign out
+                <LogOut size={14} />
+                <span>Sign out</span>
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center py-5 h-full">
-            <img
-              src={catIcon}
-              alt="Simba"
-              className="w-9 h-9 cursor-pointer hover:scale-110 transition-transform duration-200"
-              onClick={() => setSidebarCollapsed(false)}
-            />
           </div>
         )}
       </aside>
 
+      {/* Admin Panel modal */}
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
 
-      {/* Main chat area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* ── Main chat area ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light">
-          <div className="flex items-center gap-2.5">
-            <img src={catIcon} alt="Simba" className="w-8 h-8" />
-            <h1 className="font-[family-name:var(--font-display)] text-lg font-bold text-charcoal">
+        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">
+          <div className="flex items-center gap-2">
+            <img src={catIcon} alt="Simba" className="w-7 h-7" />
+            <h1
+              className="text-base font-bold text-charcoal"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               asksimba
             </h1>
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cream-dark text-charcoal
-                hover:bg-sand-light transition-colors cursor-pointer"
-              onClick={() => setShowConversations(!showConversations)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
+              onClick={() => setShowConversations((v) => !v)}
             >
-              {showConversations ? "Hide" : "Threads"}
+              {showConversations ? <X size={16} /> : <Menu size={16} />}
             </button>
             <button
-              className="px-3 py-1.5 text-xs font-medium rounded-lg text-warm-gray
-                hover:bg-cream-dark transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
               onClick={handleLogout}
             >
-              Sign out
+              <LogOut size={15} />
             </button>
           </div>
         </header>
 
         {/* Conversation title bar */}
         {selectedConversation && (
-          <div className="bg-warm-white/80 backdrop-blur-sm border-b border-sand-light/50 px-6 py-3">
-            <h2 className="text-sm font-semibold text-charcoal truncate max-w-2xl mx-auto">
+          <div className="bg-warm-white/80 backdrop-blur-sm border-b border-sand-light/50 px-6 py-2.5">
+            <p className="text-xs font-semibold text-warm-gray truncate max-w-2xl mx-auto uppercase tracking-wider">
               {selectedConversation.title || "Untitled Conversation"}
-            </h2>
+            </p>
           </div>
         )}
 
-        {/* Messages area */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto flex flex-col gap-4">
-            {/* Mobile conversation list */}
+          <div className="max-w-2xl mx-auto flex flex-col gap-3">
+            {/* Mobile conversation drawer */}
             {showConversations && (
-              <div className="md:hidden mb-2">
+              <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                 <ConversationList
                   conversations={conversations}
                   onCreateNewConversation={handleCreateNewConversation}
@@ -364,20 +335,18 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
 
             {/* Empty state */}
             {messages.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="flex flex-col items-center justify-center py-24 gap-5">
                 <div className="relative">
-                  <div className="absolute -inset-4 bg-amber-soft/20 rounded-full blur-2xl" />
+                  <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
                   <img
                     src={catIcon}
                     alt="Simba"
-                    className="relative w-16 h-16 opacity-60"
+                    className="relative w-16 h-16 opacity-50"
                   />
                 </div>
-                <div className="text-center">
-                  <p className="text-warm-gray text-sm">
-                    Ask Simba anything
-                  </p>
-                </div>
+                <p className="text-warm-gray/60 text-sm">
+                  Ask Simba anything
+                </p>
               </div>
             )}
 
@@ -388,14 +357,15 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 return <AnswerBubble key={index} text={msg.text} />;
               return <QuestionBubble key={index} text={msg.text} />;
             })}
+
             {isLoading && <AnswerBubble text="" loading={true} />}
             <div ref={messagesEndRef} />
           </div>
         </div>
 
-        {/* Input area */}
-        <footer className="border-t border-sand-light/50 bg-warm-white/60 backdrop-blur-sm">
-          <div className="max-w-2xl mx-auto px-4 py-4">
+        {/* Input */}
+        <footer className="border-t border-sand-light/40 bg-cream/80 backdrop-blur-sm">
+          <div className="max-w-2xl mx-auto px-4 py-3">
             <MessageInput
               query={query}
               handleQueryChange={handleQueryChange}
