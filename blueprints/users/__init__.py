@@ -9,7 +9,6 @@ from .models import User
 from .oidc_service import OIDCUserService
 from .decorators import admin_required
 from config.oidc_config import oidc_config
-from blueprints.email.helpers import generate_email_token, get_user_email_address
 import os
 import secrets
 import httpx
@@ -224,6 +223,7 @@ async def me():
 @user_blueprint.route("/admin/users", methods=["GET"])
 @admin_required
 async def list_users():
+    from blueprints.email.helpers import get_user_email_address
     users = await User.all().order_by("username")
     mailgun_domain = os.getenv("MAILGUN_DOMAIN", "")
     return jsonify([
@@ -283,6 +283,7 @@ async def unlink_whatsapp(user_id):
 @admin_required
 async def toggle_email(user_id):
     """Enable email channel for a user, generating an HMAC token."""
+    from blueprints.email.helpers import generate_email_token, get_user_email_address
     user = await User.get_or_none(id=user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
