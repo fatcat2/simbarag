@@ -11,6 +11,7 @@ import blueprints.conversation.logic
 import blueprints.rag
 import blueprints.users
 import blueprints.whatsapp
+import blueprints.email
 import blueprints.users.models
 from main import consult_simba_oracle
 
@@ -34,6 +35,7 @@ app.register_blueprint(blueprints.users.user_blueprint)
 app.register_blueprint(blueprints.conversation.conversation_blueprint)
 app.register_blueprint(blueprints.rag.rag_blueprint)
 app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
+app.register_blueprint(blueprints.email.email_blueprint)
 
 
 # Database configuration with environment variable support

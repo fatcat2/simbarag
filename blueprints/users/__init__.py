@@ -9,6 +9,8 @@ from .models import User
 from .oidc_service import OIDCUserService
 from .decorators import admin_required
 from config.oidc_config import oidc_config
+from blueprints.email.helpers import generate_email_token, get_user_email_address
+import os
 import secrets
 import httpx
 from urllib.parse import urlencode
@@ -223,6 +225,7 @@ async def me():
 @admin_required
 async def list_users():
     users = await User.all().order_by("username")
+    mailgun_domain = os.getenv("MAILGUN_DOMAIN", "")
     return jsonify([
         {
             "id": str(u.id),
@@ -230,6 +233,8 @@ async def list_users():
             "email": u.email,
             "whatsapp_number": u.whatsapp_number,
             "auth_provider": u.auth_provider,
+            "email_enabled": u.email_enabled,
+            "email_address": get_user_email_address(u.email_hmac_token, mailgun_domain) if u.email_hmac_token and u.email_enabled else None,
         }
         for u in users
     ])
@@ -270,5 +275,49 @@ async def unlink_whatsapp(user_id):
         return jsonify({"error": "User not found"}), 404
 
     user.whatsapp_number = None
+    await user.save()
+    return jsonify({"ok": True})
+
+
+@user_blueprint.route("/admin/users/<user_id>/email", methods=["PUT"])
+@admin_required
+async def toggle_email(user_id):
+    """Enable email channel for a user, generating an HMAC token."""
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    email_secret = os.getenv("EMAIL_HMAC_SECRET")
+    if not email_secret:
+        return jsonify({"error": "EMAIL_HMAC_SECRET not configured"}), 500
+
+    mailgun_domain = os.getenv("MAILGUN_DOMAIN", "")
+
+    if not user.email_hmac_token:
+        user.email_hmac_token = generate_email_token(user.id, email_secret)
+    user.email_enabled = True
+    await user.save()
+
+    return jsonify({
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "whatsapp_number": user.whatsapp_number,
+        "auth_provider": user.auth_provider,
+        "email_enabled": user.email_enabled,
+        "email_address": get_user_email_address(user.email_hmac_token, mailgun_domain),
+    })
+
+
+@user_blueprint.route("/admin/users/<user_id>/email", methods=["DELETE"])
+@admin_required
+async def disable_email(user_id):
+    """Disable email channel and clear the token."""
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.email_enabled = False
+    user.email_hmac_token = None
     await user.save()
     return jsonify({"ok": True})

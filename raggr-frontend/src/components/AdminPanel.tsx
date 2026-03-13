@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Phone, PhoneOff, Pencil, Check } from "lucide-react";
+import { X, Phone, PhoneOff, Pencil, Check, Mail, Copy } from "lucide-react";
 import { userService, type AdminUserRecord } from "../api/userService";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -78,6 +78,44 @@ export const AdminPanel = ({ onClose }: Props) => {
     }
   };
 
+  const toggleEmail = async (userId: string) => {
+    setRowError((p) => ({ ...p, [userId]: "" }));
+    try {
+      const updated = await userService.adminToggleEmail(userId);
+      setUsers((p) => p.map((u) => (u.id === userId ? updated : u)));
+      setRowSuccess((p) => ({ ...p, [userId]: "Email enabled ✓" }));
+      setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
+    } catch (err) {
+      setRowError((p) => ({
+        ...p,
+        [userId]: err instanceof Error ? err.message : "Failed to enable email",
+      }));
+    }
+  };
+
+  const disableEmail = async (userId: string) => {
+    setRowError((p) => ({ ...p, [userId]: "" }));
+    try {
+      await userService.adminDisableEmail(userId);
+      setUsers((p) =>
+        p.map((u) => (u.id === userId ? { ...u, email_enabled: false, email_address: null } : u)),
+      );
+      setRowSuccess((p) => ({ ...p, [userId]: "Email disabled ✓" }));
+      setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
+    } catch (err) {
+      setRowError((p) => ({
+        ...p,
+        [userId]: err instanceof Error ? err.message : "Failed to disable email",
+      }));
+    }
+  };
+
+  const copyToClipboard = (text: string, userId: string) => {
+    navigator.clipboard.writeText(text);
+    setRowSuccess((p) => ({ ...p, [userId]: "Copied ✓" }));
+    setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 backdrop-blur-sm"
@@ -97,7 +135,7 @@ export const AdminPanel = ({ onClose }: Props) => {
               <Phone size={14} className="text-leaf-dark" />
             </div>
             <h2 className="text-sm font-semibold text-charcoal">
-              Admin · WhatsApp Numbers
+              Admin · User Integrations
             </h2>
           </div>
           <button
@@ -126,6 +164,7 @@ export const AdminPanel = ({ onClose }: Props) => {
                   <TableHead>Username</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>WhatsApp</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead className="w-28">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -181,6 +220,26 @@ export const AdminPanel = ({ onClose }: Props) => {
                       )}
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        {user.email_enabled && user.email_address ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-charcoal truncate max-w-[180px]" title={user.email_address}>
+                              {user.email_address}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(user.email_address!, user.id)}
+                              className="text-warm-gray hover:text-charcoal transition-colors cursor-pointer"
+                              title="Copy address"
+                            >
+                              <Copy size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-warm-gray/40 italic">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {editingId === user.id ? (
                         <div className="flex gap-1.5">
                           <Button
@@ -217,6 +276,25 @@ export const AdminPanel = ({ onClose }: Props) => {
                             >
                               <PhoneOff size={11} />
                               Unlink
+                            </Button>
+                          )}
+                          {user.email_enabled ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => disableEmail(user.id)}
+                            >
+                              <Mail size={11} />
+                              Email
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost-dark"
+                              onClick={() => toggleEmail(user.id)}
+                            >
+                              <Mail size={11} />
+                              Email
                             </Button>
                           )}
                         </div>

@@ -12,6 +12,10 @@ class User(Model):
     email = fields.CharField(max_length=100, unique=True)
     whatsapp_number = fields.CharField(max_length=30, unique=True, null=True, index=True)
 
+    # Email channel fields
+    email_enabled = fields.BooleanField(default=False)
+    email_hmac_token = fields.CharField(max_length=16, unique=True, null=True, index=True)
+
     # OIDC fields
     oidc_subject = fields.CharField(
         max_length=255, unique=True, null=True, index=True

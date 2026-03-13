@@ -167,6 +167,23 @@ class UserService {
     );
     if (!response.ok) throw new Error("Failed to unlink WhatsApp number");
   }
+
+  async adminToggleEmail(userId: string): Promise<AdminUserRecord> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/email`,
+      { method: "PUT" },
+    );
+    if (!response.ok) throw new Error("Failed to enable email");
+    return response.json();
+  }
+
+  async adminDisableEmail(userId: string): Promise<void> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/email`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) throw new Error("Failed to disable email");
+  }
 }
 
 export interface AdminUserRecord {
@@ -175,6 +192,8 @@ export interface AdminUserRecord {
   email: string;
   whatsapp_number: string | null;
   auth_provider: string;
+  email_enabled: boolean;
+  email_address: string | null;
 }
 
 export { UserService };
