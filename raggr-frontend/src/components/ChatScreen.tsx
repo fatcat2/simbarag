@@ -205,7 +205,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   };
 
   return (
-    <div className="h-screen flex flex-row bg-cream overflow-hidden">
+    <div className="h-screen h-[100dvh] flex flex-row bg-cream overflow-hidden">
       {/* ── Desktop Sidebar ─────────────────────────────── */}
       <aside
         className={cn(
@@ -226,7 +226,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             <img
               src={catIcon}
               alt="Simba"
-              className="w-7 h-7 opacity-70 mt-1"
+              className="w-9 h-9 opacity-70 mt-1"
             />
           </div>
         ) : (
@@ -235,7 +235,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
               <div className="flex items-center gap-2.5">
-                <img src={catIcon} alt="Simba" className="w-7 h-7" />
+                <img src={catIcon} alt="Simba" className="w-9 h-9" />
                 <h2
                   className="text-lg font-bold text-cream tracking-tight"
                   style={{ fontFamily: "var(--font-display)" }}
@@ -288,11 +288,11 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
 
       {/* ── Main chat area ──────────────────────────────── */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">
           <div className="flex items-center gap-2">
-            <img src={catIcon} alt="Simba" className="w-7 h-7" />
+            <img src={catIcon} alt="Simba" className="w-9 h-9" />
             <h1
               className="text-base font-bold text-charcoal"
               style={{ fontFamily: "var(--font-display)" }}
@@ -327,12 +327,13 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                   onCreateNewConversation={handleCreateNewConversation}
                   onSelectConversation={handleSelectConversation}
                   selectedId={selectedConversation?.id}
+                  variant="light"
                 />
               </div>
             )}
             <div className="relative">
               <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
-              <img src={catIcon} alt="Simba" className="relative w-20 h-20" />
+              <img src={catIcon} alt="Simba" className="relative w-28 h-28" />
             </div>
             <h1
               className="text-2xl font-bold text-charcoal"
@@ -364,6 +365,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                       onCreateNewConversation={handleCreateNewConversation}
                       onSelectConversation={handleSelectConversation}
                       selectedId={selectedConversation?.id}
+                      variant="light"
                     />
                   </div>
                 )}

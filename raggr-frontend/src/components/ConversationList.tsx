@@ -13,6 +13,7 @@ type ConversationProps = {
   onSelectConversation: (conversation: Conversation) => void;
   onCreateNewConversation: () => void;
   selectedId?: string;
+  variant?: "dark" | "light";
 };
 
 export const ConversationList = ({
@@ -20,6 +21,7 @@ export const ConversationList = ({
   onSelectConversation,
   onCreateNewConversation,
   selectedId,
+  variant = "dark",
 }: ConversationProps) => {
   const [items, setItems] = useState(conversations);
 
@@ -51,8 +53,10 @@ export const ConversationList = ({
         onClick={onCreateNewConversation}
         className={cn(
           "flex items-center gap-2 w-full px-3 py-2 rounded-xl",
-          "text-sm text-cream/60 hover:text-cream hover:bg-white/8",
-          "transition-all duration-150 cursor-pointer mb-1",
+          "text-sm transition-all duration-150 cursor-pointer mb-1",
+          variant === "dark"
+            ? "text-cream/60 hover:text-cream hover:bg-white/8"
+            : "text-warm-gray hover:text-charcoal hover:bg-cream-dark",
         )}
       >
         <Plus size={14} strokeWidth={2.5} />
@@ -69,9 +73,13 @@ export const ConversationList = ({
             className={cn(
               "w-full px-3 py-2 rounded-xl text-left",
               "text-sm truncate transition-all duration-150 cursor-pointer",
-              isActive
-                ? "bg-white/12 text-cream font-medium"
-                : "text-cream/60 hover:text-cream hover:bg-white/8",
+              variant === "dark"
+                ? isActive
+                  ? "bg-white/12 text-cream font-medium"
+                  : "text-cream/60 hover:text-cream hover:bg-white/8"
+                : isActive
+                  ? "bg-cream-dark text-charcoal font-medium"
+                  : "text-warm-gray hover:text-charcoal hover:bg-cream-dark",
             )}
           >
             {conv.title}
