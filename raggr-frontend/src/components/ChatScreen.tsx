@@ -226,7 +226,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             <img
               src={catIcon}
               alt="Simba"
-              className="w-9 h-9 opacity-70 mt-1"
+              className="w-12 h-12 opacity-70 mt-1"
             />
           </div>
         ) : (
@@ -235,7 +235,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
               <div className="flex items-center gap-2.5">
-                <img src={catIcon} alt="Simba" className="w-9 h-9" />
+                <img src={catIcon} alt="Simba" className="w-12 h-12" />
                 <h2
                   className="text-lg font-bold text-cream tracking-tight"
                   style={{ fontFamily: "var(--font-display)" }}
@@ -292,7 +292,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">
           <div className="flex items-center gap-2">
-            <img src={catIcon} alt="Simba" className="w-9 h-9" />
+            <img src={catIcon} alt="Simba" className="w-12 h-12" />
             <h1
               className="text-base font-bold text-charcoal"
               style={{ fontFamily: "var(--font-display)" }}
@@ -333,7 +333,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             )}
             <div className="relative">
               <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
-              <img src={catIcon} alt="Simba" className="relative w-28 h-28" />
+              <img src={catIcon} alt="Simba" className="relative w-36 h-36" />
             </div>
             <h1
               className="text-2xl font-bold text-charcoal"
