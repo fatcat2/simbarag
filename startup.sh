@@ -12,8 +12,5 @@ if [ "${OBSIDIAN_CONTINUOUS_SYNC}" = "true" ]; then
     ob sync --continuous &
 fi
 
-echo "Starting reindex process in background..."
-python main.py "" --reindex &
-
 echo "Starting application..."
 python app.py
