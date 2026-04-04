@@ -123,22 +123,13 @@ async def upload_image():
 
     await s3_upload_image(processed_bytes, key, output_content_type)
 
-    return jsonify(
-        {
-            "image_key": key,
-            "image_url": f"/api/conversation/image/{key}",
-        }
-    )
+    return jsonify({"image_key": key})
 
 
 @conversation_blueprint.get("/image/<path:image_key>")
 @jwt_refresh_token_required
 async def serve_image(image_key: str):
-    try:
-        url = await s3_presigned_url(image_key)
-    except Exception:
-        return jsonify({"error": "Image not found"}), 404
-
+    url = await s3_presigned_url(image_key)
     return jsonify({"url": url})
 
 

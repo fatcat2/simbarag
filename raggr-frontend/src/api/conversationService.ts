@@ -125,7 +125,7 @@ class ConversationService {
   async uploadImage(
     file: File,
     conversationId: string,
-  ): Promise<{ image_key: string; image_url: string }> {
+  ): Promise<{ image_key: string }> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("conversation_id", conversationId);
