@@ -16,12 +16,14 @@ async def add_message_to_conversation(
     message: str,
     speaker: str,
     user: blueprints.users.models.User,
+    image_key: str | None = None,
 ) -> ConversationMessage:
     print(conversation, message, speaker)
     message = await ConversationMessage.create(
         text=message,
         speaker=speaker,
         conversation=conversation,
+        image_key=image_key,
     )
 
     return message

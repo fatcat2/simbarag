@@ -1,10 +1,12 @@
 import { cn } from "../lib/utils";
+import { conversationService } from "../api/conversationService";
 
 type QuestionBubbleProps = {
   text: string;
+  image_key?: string | null;
 };
 
-export const QuestionBubble = ({ text }: QuestionBubbleProps) => {
+export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
   return (
     <div className="flex justify-end message-enter">
       <div
@@ -15,6 +17,13 @@ export const QuestionBubble = ({ text }: QuestionBubbleProps) => {
           "shadow-sm shadow-leaf/10",
         )}
       >
+        {image_key && (
+          <img
+            src={conversationService.getImageUrl(image_key)}
+            alt="Uploaded image"
+            className="max-w-full rounded-xl mb-2"
+          />
+        )}
         {text}
       </div>
     </div>

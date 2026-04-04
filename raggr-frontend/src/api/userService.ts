@@ -106,14 +106,15 @@ class UserService {
   async fetchWithRefreshToken(
     url: string,
     options: RequestInit = {},
+    { skipContentType = false }: { skipContentType?: boolean } = {},
   ): Promise<Response> {
     const refreshToken = localStorage.getItem("refresh_token");
 
     // Add authorization header
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-      ...(refreshToken && { Authorization: `Bearer ${refreshToken}` }),
+    const headers: Record<string, string> = {
+      ...(skipContentType ? {} : { "Content-Type": "application/json" }),
+      ...((options.headers as Record<string, string>) || {}),
+      ...(refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}),
     };
 
     let response = await fetch(url, { ...options, headers });

@@ -76,6 +76,39 @@ def describe_simba_image(input):
     return result
 
 
+async def analyze_user_image(file_bytes: bytes) -> str:
+    """Analyze an image uploaded by a user and return a text description.
+
+    Uses Ollama vision model to describe the image contents.
+    Works with JPEG, PNG, WebP bytes (HEIC should be converted before calling).
+    """
+    import tempfile
+
+    # Write to temp file since ollama client expects a file path
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+        f.write(file_bytes)
+        temp_path = f.name
+
+    try:
+        response = client.chat(
+            model="gemma3:4b",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful image analyst. Describe what you see in the image in detail. Be thorough but concise.",
+                },
+                {
+                    "role": "user",
+                    "content": "Please describe this image in detail.",
+                    "images": [temp_path],
+                },
+            ],
+        )
+        return response["message"]["content"]
+    finally:
+        os.remove(temp_path)
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
     if args.filepath:

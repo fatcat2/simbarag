@@ -14,6 +14,7 @@ import catIcon from "../assets/cat.png";
 type Message = {
   text: string;
   speaker: "simba" | "user" | "tool";
+  image_key?: string | null;
 };
 
 type Conversation = {
@@ -55,6 +56,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAdminPanel, setShowAdminPanel] = useState<boolean>(false);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef<boolean>(true);
@@ -80,7 +82,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       try {
         const fetched = await conversationService.getConversation(conversation.id);
         setMessages(
-          fetched.messages.map((m) => ({ text: m.text, speaker: m.speaker })),
+          fetched.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })),
         );
       } catch (err) {
         console.error("Failed to load messages:", err);
@@ -120,7 +122,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       try {
         const conv = await conversationService.getConversation(selectedConversation.id);
         setSelectedConversation({ id: conv.id, title: conv.name });
-        setMessages(conv.messages.map((m) => ({ text: m.text, speaker: m.speaker })));
+        setMessages(conv.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })));
       } catch (err) {
         console.error("Failed to load messages:", err);
       }
@@ -129,7 +131,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [selectedConversation?.id]);
 
   const handleQuestionSubmit = async () => {
-    if (!query.trim() || isLoading) return;
+    if ((!query.trim() && !pendingImage) || isLoading) return;
 
     let activeConversation = selectedConversation;
     if (!activeConversation) {
@@ -139,9 +141,13 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       setConversations((prev) => [activeConversation!, ...prev]);
     }
 
+    // Capture pending image before clearing state
+    const imageFile = pendingImage;
+
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
     setQuery("");
+    setPendingImage(null);
     setIsLoading(true);
 
     if (simbaMode) {
@@ -155,6 +161,29 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     abortControllerRef.current = abortController;
 
     try {
+      // Upload image first if present
+      let imageKey: string | undefined;
+      if (imageFile) {
+        const uploadResult = await conversationService.uploadImage(
+          imageFile,
+          activeConversation.id,
+        );
+        imageKey = uploadResult.image_key;
+
+        // Update the user message with the image key
+        setMessages((prev) => {
+          const updated = [...prev];
+          // Find the last user message we just added
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].speaker === "user") {
+              updated[i] = { ...updated[i], image_key: imageKey };
+              break;
+            }
+          }
+          return updated;
+        });
+      }
+
       await conversationService.streamQuery(
         query,
         activeConversation.id,
@@ -170,6 +199,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
           }
         },
         abortController.signal,
+        imageKey,
       );
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
@@ -349,6 +379,9 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 handleQuestionSubmit={handleQuestionSubmit}
                 setSimbaMode={setSimbaMode}
                 isLoading={isLoading}
+                pendingImage={pendingImage}
+                onImageSelect={(file) => setPendingImage(file)}
+                onClearImage={() => setPendingImage(null)}
               />
             </div>
           </div>
@@ -375,7 +408,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                     return <ToolBubble key={index} text={msg.text} />;
                   if (msg.speaker === "simba")
                     return <AnswerBubble key={index} text={msg.text} />;
-                  return <QuestionBubble key={index} text={msg.text} />;
+                  return <QuestionBubble key={index} text={msg.text} image_key={msg.image_key} />;
                 })}
 
                 {isLoading && <AnswerBubble text="" loading={true} />}

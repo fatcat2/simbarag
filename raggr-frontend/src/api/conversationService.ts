@@ -13,6 +13,7 @@ interface Message {
   text: string;
   speaker: "user" | "simba";
   created_at: string;
+  image_key?: string | null;
 }
 
 interface Conversation {
@@ -121,17 +122,52 @@ class ConversationService {
     return await response.json();
   }
 
+  async uploadImage(
+    file: File,
+    conversationId: string,
+  ): Promise<{ image_key: string; image_url: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("conversation_id", conversationId);
+
+    const response = await userService.fetchWithRefreshToken(
+      `${this.conversationBaseUrl}/upload-image`,
+      {
+        method: "POST",
+        body: formData,
+      },
+      { skipContentType: true },
+    );
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Failed to upload image");
+    }
+
+    return await response.json();
+  }
+
+  getImageUrl(imageKey: string): string {
+    return `/api/conversation/image/${imageKey}`;
+  }
+
   async streamQuery(
     query: string,
     conversation_id: string,
     onEvent: SSEEventCallback,
     signal?: AbortSignal,
+    imageKey?: string,
   ): Promise<void> {
+    const body: Record<string, string> = { query, conversation_id };
+    if (imageKey) {
+      body.image_key = imageKey;
+    }
+
     const response = await userService.fetchWithRefreshToken(
       `${this.conversationBaseUrl}/stream-query`,
       {
         method: "POST",
-        body: JSON.stringify({ query, conversation_id }),
+        body: JSON.stringify(body),
         signal,
       },
     );
