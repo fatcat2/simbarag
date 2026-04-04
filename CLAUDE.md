@@ -91,6 +91,15 @@ docker compose up -d
 
 **Auth Flow**: LLDAP → Authelia (OIDC) → Backend JWT → Frontend localStorage
 
+## Testing
+
+Always run `make test` before pushing code to ensure all tests pass.
+
+```bash
+make test       # Run tests
+make test-cov   # Run tests with coverage
+```
+
 ## Key Patterns
 
 - All endpoints are async (`async def`)
