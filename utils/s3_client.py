@@ -47,6 +47,16 @@ async def get_image(key: str) -> tuple[bytes, str]:
     return body, content_type
 
 
+async def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
+    async with _get_client() as client:
+        url = await client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": S3_BUCKET_NAME, "Key": key},
+            ExpiresIn=expires_in,
+        )
+    return url
+
+
 async def delete_image(key: str) -> None:
     async with _get_client() as client:
         await client.delete_object(Bucket=S3_BUCKET_NAME, Key=key)

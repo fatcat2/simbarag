@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "../lib/utils";
 import { conversationService } from "../api/conversationService";
 
@@ -7,6 +8,20 @@ type QuestionBubbleProps = {
 };
 
 export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    if (!image_key) return;
+    conversationService
+      .getPresignedImageUrl(image_key)
+      .then(setImageUrl)
+      .catch((err) => {
+        console.error("Failed to load image:", err);
+        setImageError(true);
+      });
+  }, [image_key]);
+
   return (
     <div className="flex justify-end message-enter">
       <div
@@ -17,9 +32,15 @@ export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
           "shadow-sm shadow-leaf/10",
         )}
       >
-        {image_key && (
+        {imageError && (
+          <div className="flex items-center gap-2 text-xs text-charcoal/50 bg-charcoal/5 rounded-xl px-3 py-2 mb-2">
+            <span>🖼️</span>
+            <span>Image failed to load</span>
+          </div>
+        )}
+        {imageUrl && (
           <img
-            src={conversationService.getImageUrl(image_key)}
+            src={imageUrl}
             alt="Uploaded image"
             className="max-w-full rounded-xl mb-2"
           />
