@@ -61,6 +61,7 @@ services:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-asksimba-images}
       - S3_REGION=${S3_REGION:-garage}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
+      - FERNET_KEY=${FERNET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
