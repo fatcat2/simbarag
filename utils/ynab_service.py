@@ -82,7 +82,6 @@ class YNABService:
         end_date: Optional[str] = None,
         category_name: Optional[str] = None,
         payee_name: Optional[str] = None,
-        limit: int = 50,
     ) -> dict[str, Any]:
         """Get transactions filtered by date range, category, or payee.
 
@@ -91,7 +90,6 @@ class YNABService:
             end_date: End date in YYYY-MM-DD format (defaults to today)
             category_name: Filter by category name (case-insensitive partial match)
             payee_name: Filter by payee name (case-insensitive partial match)
-            limit: Maximum number of transactions to return (default 50)
 
         Returns:
             Dictionary containing matching transactions and summary statistics.
@@ -145,9 +143,8 @@ class YNABService:
             )
             total_amount += amount
 
-        # Sort by date (most recent first) and limit
+        # Sort by date (most recent first)
         filtered_transactions.sort(key=lambda x: x["date"], reverse=True)
-        filtered_transactions = filtered_transactions[:limit]
 
         return {
             "transactions": filtered_transactions,
