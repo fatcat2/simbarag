@@ -41,6 +41,7 @@ class ConversationMessage(Model):
     )
     created_at = fields.DatetimeField(auto_now_add=True)
     speaker = fields.CharEnumField(enum_type=Speaker, max_length=10)
+    image_key = fields.CharField(max_length=512, null=True, default=None)
 
     class Meta:
         table = "conversation_messages"

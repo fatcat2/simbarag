@@ -1,13 +1,19 @@
 import datetime
 import json
+import logging
+import uuid
 
-from quart import Blueprint, jsonify, make_response, request
+from quart import Blueprint, Response, jsonify, make_response, request
 from quart_jwt_extended import (
     get_jwt_identity,
     jwt_refresh_token_required,
 )
 
 import blueprints.users.models
+from utils.image_process import analyze_user_image
+from utils.image_upload import ImageValidationError, process_image
+from utils.s3_client import get_image as s3_get_image
+from utils.s3_client import upload_image as s3_upload_image
 
 from .agents import main_agent
 from .logic import (
@@ -29,7 +35,9 @@ conversation_blueprint = Blueprint(
 _SYSTEM_PROMPT = SIMBA_SYSTEM_PROMPT
 
 
-def _build_messages_payload(conversation, query_text: str) -> list:
+def _build_messages_payload(
+    conversation, query_text: str, image_description: str | None = None
+) -> list:
     recent_messages = (
         conversation.messages[-10:]
         if len(conversation.messages) > 10
@@ -38,8 +46,19 @@ def _build_messages_payload(conversation, query_text: str) -> list:
     messages_payload = [{"role": "system", "content": _SYSTEM_PROMPT}]
     for msg in recent_messages[:-1]:  # Exclude the message we just added
         role = "user" if msg.speaker == "user" else "assistant"
-        messages_payload.append({"role": role, "content": msg.text})
-    messages_payload.append({"role": "user", "content": query_text})
+        text = msg.text
+        if msg.image_key and role == "user":
+            text = f"[User sent an image]\n{text}"
+        messages_payload.append({"role": role, "content": text})
+
+    # Build the current user message with optional image description
+    if image_description:
+        content = f"[Image analysis: {image_description}]"
+        if query_text:
+            content = f"{query_text}\n\n{content}"
+    else:
+        content = query_text
+    messages_payload.append({"role": "user", "content": content})
     return messages_payload
 
 
@@ -74,6 +93,58 @@ async def query():
     return jsonify({"response": message})
 
 
+@conversation_blueprint.post("/upload-image")
+@jwt_refresh_token_required
+async def upload_image():
+    current_user_uuid = get_jwt_identity()
+    await blueprints.users.models.User.get(id=current_user_uuid)
+
+    files = await request.files
+    form = await request.form
+    file = files.get("file")
+    conversation_id = form.get("conversation_id")
+
+    if not file or not conversation_id:
+        return jsonify({"error": "file and conversation_id are required"}), 400
+
+    file_bytes = file.read()
+    content_type = file.content_type or "image/jpeg"
+
+    try:
+        processed_bytes, output_content_type = process_image(file_bytes, content_type)
+    except ImageValidationError as e:
+        return jsonify({"error": str(e)}), 400
+
+    ext = output_content_type.split("/")[-1]
+    if ext == "jpeg":
+        ext = "jpg"
+    key = f"conversations/{conversation_id}/{uuid.uuid4()}.{ext}"
+
+    await s3_upload_image(processed_bytes, key, output_content_type)
+
+    return jsonify(
+        {
+            "image_key": key,
+            "image_url": f"/api/conversation/image/{key}",
+        }
+    )
+
+
+@conversation_blueprint.get("/image/<path:image_key>")
+@jwt_refresh_token_required
+async def serve_image(image_key: str):
+    try:
+        image_bytes, content_type = await s3_get_image(image_key)
+    except Exception:
+        return jsonify({"error": "Image not found"}), 404
+
+    return Response(
+        image_bytes,
+        content_type=content_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
 @conversation_blueprint.post("/stream-query")
 @jwt_refresh_token_required
 async def stream_query():
@@ -82,16 +153,31 @@ async def stream_query():
     data = await request.get_json()
     query_text = data.get("query")
     conversation_id = data.get("conversation_id")
+    image_key = data.get("image_key")
     conversation = await get_conversation_by_id(conversation_id)
     await conversation.fetch_related("messages")
     await add_message_to_conversation(
         conversation=conversation,
-        message=query_text,
+        message=query_text or "",
         speaker="user",
         user=user,
+        image_key=image_key,
     )
 
-    messages_payload = _build_messages_payload(conversation, query_text)
+    # If an image was uploaded, analyze it with the vision model
+    image_description = None
+    if image_key:
+        try:
+            image_bytes, _ = await s3_get_image(image_key)
+            image_description = await analyze_user_image(image_bytes)
+            logging.info(f"Image analysis complete for {image_key}")
+        except Exception as e:
+            logging.error(f"Failed to analyze image: {e}")
+            image_description = "[Image could not be analyzed]"
+
+    messages_payload = _build_messages_payload(
+        conversation, query_text or "", image_description
+    )
     payload = {"messages": messages_payload}
 
     async def event_generator():
@@ -160,6 +246,7 @@ async def get_conversation(conversation_id: str):
                 "text": msg.text,
                 "speaker": msg.speaker.value,
                 "created_at": msg.created_at.isoformat(),
+                "image_key": msg.image_key,
             }
         )
     name = conversation.name

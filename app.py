@@ -13,6 +13,7 @@ import blueprints.users
 import blueprints.whatsapp
 import blueprints.email
 import blueprints.users.models
+from config.db import TORTOISE_CONFIG
 from main import consult_simba_oracle
 
 # Load environment variables
@@ -28,6 +29,7 @@ app = Quart(
 )
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "SECRET_KEY")
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
 jwt = JWTManager(app)
 
 # Register blueprints
@@ -37,24 +39,6 @@ app.register_blueprint(blueprints.rag.rag_blueprint)
 app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
 app.register_blueprint(blueprints.email.email_blueprint)
 
-
-# Database configuration with environment variable support
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgres://raggr:raggr_dev_password@localhost:5432/raggr"
-)
-
-TORTOISE_CONFIG = {
-    "connections": {"default": DATABASE_URL},
-    "apps": {
-        "models": {
-            "models": [
-                "blueprints.conversation.models",
-                "blueprints.users.models",
-                "aerich.models",
-            ]
-        },
-    },
-}
 
 # Initialize Tortoise ORM with lifecycle hooks
 @app.while_serving
