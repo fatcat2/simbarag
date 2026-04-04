@@ -425,6 +425,9 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                   handleQuestionSubmit={handleQuestionSubmit}
                   setSimbaMode={setSimbaMode}
                   isLoading={isLoading}
+                  pendingImage={pendingImage}
+                  onImageSelect={(file) => setPendingImage(file)}
+                  onClearImage={() => setPendingImage(null)}
                 />
               </div>
             </footer>
