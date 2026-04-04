@@ -147,8 +147,15 @@ class ConversationService {
     return await response.json();
   }
 
-  getImageUrl(imageKey: string): string {
-    return `/api/conversation/image/${imageKey}`;
+  async getPresignedImageUrl(imageKey: string): Promise<string> {
+    const response = await userService.fetchWithRefreshToken(
+      `${this.conversationBaseUrl}/image/${imageKey}`,
+    );
+    if (!response.ok) {
+      throw new Error("Failed to get image URL");
+    }
+    const data = await response.json();
+    return data.url;
   }
 
   async streamQuery(

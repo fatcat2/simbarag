@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 
-from quart import Blueprint, Response, jsonify, make_response, request
+from quart import Blueprint, jsonify, make_response, request
 from quart_jwt_extended import (
     get_jwt_identity,
     jwt_refresh_token_required,
@@ -12,6 +12,7 @@ from quart_jwt_extended import (
 import blueprints.users.models
 from utils.image_process import analyze_user_image
 from utils.image_upload import ImageValidationError, process_image
+from utils.s3_client import generate_presigned_url as s3_presigned_url
 from utils.s3_client import get_image as s3_get_image
 from utils.s3_client import upload_image as s3_upload_image
 
@@ -134,15 +135,11 @@ async def upload_image():
 @jwt_refresh_token_required
 async def serve_image(image_key: str):
     try:
-        image_bytes, content_type = await s3_get_image(image_key)
+        url = await s3_presigned_url(image_key)
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
-    return Response(
-        image_bytes,
-        content_type=content_type,
-        headers={"Cache-Control": "private, max-age=3600"},
-    )
+    return jsonify({"url": url})
 
 
 @conversation_blueprint.post("/stream-query")

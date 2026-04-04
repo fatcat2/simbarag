@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "../lib/utils";
 import { conversationService } from "../api/conversationService";
 
@@ -7,6 +8,13 @@ type QuestionBubbleProps = {
 };
 
 export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!image_key) return;
+    conversationService.getPresignedImageUrl(image_key).then(setImageUrl).catch(() => {});
+  }, [image_key]);
+
   return (
     <div className="flex justify-end message-enter">
       <div
@@ -17,9 +25,9 @@ export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
           "shadow-sm shadow-leaf/10",
         )}
       >
-        {image_key && (
+        {imageUrl && (
           <img
-            src={conversationService.getImageUrl(image_key)}
+            src={imageUrl}
             alt="Uploaded image"
             className="max-w-full rounded-xl mb-2"
           />
