@@ -27,18 +27,14 @@ class YNABService:
         self.api_client = ynab.ApiClient(configuration)
 
         # Initialize API endpoints
-        self.budgets_api = ynab.BudgetsApi(self.api_client)
+        self.plans_api = ynab.PlansApi(self.api_client)
         self.transactions_api = ynab.TransactionsApi(self.api_client)
         self.months_api = ynab.MonthsApi(self.api_client)
         self.categories_api = ynab.CategoriesApi(self.api_client)
 
-        # Get budget ID if not provided
+        # Get budget ID if not provided, fall back to last-used
         if not self.budget_id:
-            budgets_response = self.budgets_api.get_budgets()
-            if budgets_response.data and budgets_response.data.budgets:
-                self.budget_id = budgets_response.data.budgets[0].id
-            else:
-                raise ValueError("No YNAB budgets found")
+            self.budget_id = "last-used"
 
     def get_budget_summary(self) -> dict[str, Any]:
         """Get overall budget summary and health status.
@@ -47,7 +43,7 @@ class YNABService:
             Dictionary containing budget summary with to-be-budgeted amount,
             total budgeted, total activity, and overall budget health.
         """
-        budget_response = self.budgets_api.get_budget_by_id(self.budget_id)
+        budget_response = self.plans_api.get_plan_by_id(self.budget_id)
         budget_data = budget_response.data.budget
 
         # Calculate totals from categories
@@ -59,15 +55,12 @@ class YNABService:
         total_activity = 0
         total_available = 0
 
-        for category_group in budget_data.category_groups or []:
-            if category_group.deleted or category_group.hidden:
+        for category in budget_data.categories or []:
+            if category.deleted or category.hidden:
                 continue
-            for category in category_group.categories or []:
-                if category.deleted or category.hidden:
-                    continue
-                total_budgeted += category.budgeted / 1000
-                total_activity += category.activity / 1000
-                total_available += category.balance / 1000
+            total_budgeted += category.budgeted / 1000
+            total_activity += category.activity / 1000
+            total_available += category.balance / 1000
 
         return {
             "budget_name": budget_data.name,
@@ -89,7 +82,6 @@ class YNABService:
         end_date: Optional[str] = None,
         category_name: Optional[str] = None,
         payee_name: Optional[str] = None,
-        limit: int = 50,
     ) -> dict[str, Any]:
         """Get transactions filtered by date range, category, or payee.
 
@@ -98,7 +90,6 @@ class YNABService:
             end_date: End date in YYYY-MM-DD format (defaults to today)
             category_name: Filter by category name (case-insensitive partial match)
             payee_name: Filter by payee name (case-insensitive partial match)
-            limit: Maximum number of transactions to return (default 50)
 
         Returns:
             Dictionary containing matching transactions and summary statistics.
@@ -109,9 +100,10 @@ class YNABService:
         if not end_date:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
-        # Get transactions
+        # Get transactions (SDK v2 requires datetime.date, not string)
+        since_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
         transactions_response = self.transactions_api.get_transactions(
-            self.budget_id, since_date=start_date
+            self.budget_id, since_date=since_date_obj
         )
 
         transactions = transactions_response.data.transactions or []
@@ -124,7 +116,7 @@ class YNABService:
             # Skip if deleted or before start date or after end date
             if txn.deleted:
                 continue
-            txn_date = str(txn.date)
+            txn_date = str(txn.var_date)
             if txn_date < start_date or txn_date > end_date:
                 continue
 
@@ -141,7 +133,7 @@ class YNABService:
             amount = txn.amount / 1000  # Convert milliunits to dollars
             filtered_transactions.append(
                 {
-                    "date": txn_date,
+                    "date": str(txn.var_date),
                     "payee": txn.payee_name,
                     "category": txn.category_name,
                     "memo": txn.memo,
@@ -151,9 +143,8 @@ class YNABService:
             )
             total_amount += amount
 
-        # Sort by date (most recent first) and limit
+        # Sort by date (most recent first)
         filtered_transactions.sort(key=lambda x: x["date"], reverse=True)
-        filtered_transactions = filtered_transactions[:limit]
 
         return {
             "transactions": filtered_transactions,
@@ -180,8 +171,9 @@ class YNABService:
             if len(month) == 7:  # YYYY-MM
                 month = f"{month}-01"
 
-        # Get budget month
-        month_response = self.months_api.get_budget_month(self.budget_id, month)
+        # Get budget month (SDK v2 requires datetime.date, not string)
+        month_date_obj = datetime.strptime(month, "%Y-%m-%d").date()
+        month_response = self.months_api.get_plan_month(self.budget_id, month_date_obj)
 
         month_data = month_response.data.month
 

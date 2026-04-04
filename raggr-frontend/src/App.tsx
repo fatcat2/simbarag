@@ -5,6 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ChatScreen } from "./components/ChatScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { conversationService } from "./api/conversationService";
+import catIcon from "./assets/cat.png";
 
 const AppContainer = () => {
   const [isAuthenticated, setAuthenticated] = useState<boolean>(false);
@@ -44,8 +45,15 @@ const AppContainer = () => {
   // Show loading state while checking authentication
   if (isChecking) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white/85">
-        <div className="text-xl">Loading...</div>
+      <div className="h-screen flex flex-col items-center justify-center bg-cream gap-4">
+        <img
+          src={catIcon}
+          alt="Simba"
+          className="w-16 h-16 animate-bounce"
+        />
+        <p className="text-warm-gray font-medium text-lg tracking-wide">
+          waking up simba...
+        </p>
       </div>
     );
   }

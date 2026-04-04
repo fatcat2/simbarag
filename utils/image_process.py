@@ -76,6 +76,50 @@ def describe_simba_image(input):
     return result
 
 
+async def analyze_user_image(file_bytes: bytes) -> str:
+    """Analyze an image uploaded by a user and return a text description.
+
+    Uses llama-server (OpenAI-compatible API) with vision support.
+    Falls back to OpenAI if llama-server is not configured.
+    """
+    import base64
+
+    from openai import AsyncOpenAI
+
+    llama_url = os.getenv("LLAMA_SERVER_URL")
+    if llama_url:
+        aclient = AsyncOpenAI(base_url=llama_url, api_key="not-needed")
+        model = os.getenv("LLAMA_MODEL_NAME", "llama-3.1-8b-instruct")
+    else:
+        aclient = AsyncOpenAI()
+        model = "gpt-4o-mini"
+
+    b64 = base64.b64encode(file_bytes).decode("utf-8")
+
+    response = await aclient.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful image analyst. Describe what you see in the image in detail. Be thorough but concise.",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Please describe this image in detail."},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{b64}",
+                        },
+                    },
+                ],
+            },
+        ],
+    )
+    return response.choices[0].message.content
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
     if args.filepath:

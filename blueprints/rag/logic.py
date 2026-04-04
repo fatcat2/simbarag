@@ -8,6 +8,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .fetchers import PaperlessNGXService
+from utils.obsidian_service import ObsidianService
 
 # Load environment variables
 load_dotenv()
@@ -58,10 +59,73 @@ async def fetch_documents_from_paperless_ngx() -> list[Document]:
 
 
 async def index_documents():
+    """Index Paperless-NGX documents into vector store."""
     documents = await fetch_documents_from_paperless_ngx()
 
     splits = text_splitter.split_documents(documents)
     await vector_store.aadd_documents(documents=splits)
+
+
+async def fetch_obsidian_documents() -> list[Document]:
+    """Fetch all markdown documents from Obsidian vault.
+
+    Returns:
+        List of LangChain Document objects with source='obsidian' metadata.
+    """
+    obsidian_service = ObsidianService()
+    documents = []
+
+    for md_path in obsidian_service.walk_vault():
+        try:
+            # Read markdown file
+            with open(md_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # Parse metadata
+            parsed = obsidian_service.parse_markdown(content, md_path)
+
+            # Create LangChain Document with obsidian source
+            document = Document(
+                page_content=parsed["content"],
+                metadata={
+                    "source": "obsidian",
+                    "filepath": parsed["filepath"],
+                    "tags": parsed["tags"],
+                    "created_at": parsed["metadata"].get("created_at"),
+                    **{k: v for k, v in parsed["metadata"].items() if k not in ["created_at", "created_by"]},
+                },
+            )
+            documents.append(document)
+
+        except Exception as e:
+            print(f"Error reading {md_path}: {e}")
+            continue
+
+    return documents
+
+
+async def index_obsidian_documents():
+    """Index all Obsidian markdown documents into vector store.
+
+    Deletes existing obsidian source chunks before re-indexing.
+    """
+    obsidian_service = ObsidianService()
+    documents = await fetch_obsidian_documents()
+
+    if not documents:
+        print("No Obsidian documents found to index")
+        return {"indexed": 0}
+
+    # Delete existing obsidian chunks
+    existing_results = vector_store.get(where={"source": "obsidian"})
+    if existing_results.get("ids"):
+        await vector_store.adelete(existing_results["ids"])
+
+    # Split and index documents
+    splits = text_splitter.split_documents(documents)
+    await vector_store.aadd_documents(documents=splits)
+
+    return {"indexed": len(documents)}
 
 
 async def query_vector_store(query: str):

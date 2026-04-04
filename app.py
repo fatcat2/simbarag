@@ -1,17 +1,19 @@
-import os
 import logging
+import os
 
 from dotenv import load_dotenv
 from quart import Quart, jsonify, render_template, request, send_from_directory
 from quart_jwt_extended import JWTManager, get_jwt_identity, jwt_refresh_token_required
-from tortoise.contrib.quart import register_tortoise
+from tortoise import Tortoise
 
 import blueprints.conversation
 import blueprints.conversation.logic
 import blueprints.email
 import blueprints.rag
 import blueprints.users
+import blueprints.whatsapp
 import blueprints.users.models
+from config.db import TORTOISE_CONFIG
 from main import consult_simba_oracle
 
 # Load environment variables
@@ -36,6 +38,7 @@ app = Quart(
 )
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "SECRET_KEY")
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
 jwt = JWTManager(app)
 
 # Register blueprints
@@ -43,33 +46,18 @@ app.register_blueprint(blueprints.users.user_blueprint)
 app.register_blueprint(blueprints.conversation.conversation_blueprint)
 app.register_blueprint(blueprints.email.email_blueprint)
 app.register_blueprint(blueprints.rag.rag_blueprint)
+app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
 
 
-# Database configuration with environment variable support
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgres://raggr:raggr_dev_password@localhost:5432/raggr"
-)
-
-TORTOISE_CONFIG = {
-    "connections": {"default": DATABASE_URL},
-    "apps": {
-        "models": {
-            "models": [
-                "blueprints.conversation.models",
-                "blueprints.users.models",
-                "blueprints.email.models",
-                "aerich.models",
-            ]
-        },
-    },
-}
-
-# Initialize Tortoise ORM
-register_tortoise(
-    app,
-    config=TORTOISE_CONFIG,
-    generate_schemas=False,  # Disabled - using Aerich for migrations
-)
+# Initialize Tortoise ORM with lifecycle hooks
+@app.while_serving
+async def lifespan():
+    logging.info("Initializing Tortoise ORM...")
+    await Tortoise.init(config=TORTOISE_CONFIG)
+    logging.info("Tortoise ORM initialized successfully")
+    yield
+    logging.info("Closing Tortoise ORM connections...")
+    await Tortoise.close_connections()
 
 
 # Serve React static files

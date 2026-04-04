@@ -106,14 +106,15 @@ class UserService {
   async fetchWithRefreshToken(
     url: string,
     options: RequestInit = {},
+    { skipContentType = false }: { skipContentType?: boolean } = {},
   ): Promise<Response> {
     const refreshToken = localStorage.getItem("refresh_token");
 
     // Add authorization header
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-      ...(refreshToken && { Authorization: `Bearer ${refreshToken}` }),
+    const headers: Record<string, string> = {
+      ...(skipContentType ? {} : { "Content-Type": "application/json" }),
+      ...((options.headers as Record<string, string>) || {}),
+      ...(refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}),
     };
 
     let response = await fetch(url, { ...options, headers });
@@ -134,6 +135,67 @@ class UserService {
 
     return response;
   }
+
+  async getMe(): Promise<{ id: string; username: string; email: string; is_admin: boolean }> {
+    const response = await this.fetchWithRefreshToken(`${this.baseUrl}/me`);
+    if (!response.ok) throw new Error("Failed to fetch user profile");
+    return response.json();
+  }
+
+  async adminListUsers(): Promise<AdminUserRecord[]> {
+    const response = await this.fetchWithRefreshToken(`${this.baseUrl}/admin/users`);
+    if (!response.ok) throw new Error("Failed to list users");
+    return response.json();
+  }
+
+  async adminSetWhatsapp(userId: string, number: string): Promise<AdminUserRecord> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/whatsapp`,
+      { method: "PUT", body: JSON.stringify({ whatsapp_number: number }) },
+    );
+    if (response.status === 409) {
+      const data = await response.json();
+      throw new Error(data.error ?? "WhatsApp number already in use");
+    }
+    if (!response.ok) throw new Error("Failed to set WhatsApp number");
+    return response.json();
+  }
+
+  async adminUnlinkWhatsapp(userId: string): Promise<void> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/whatsapp`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) throw new Error("Failed to unlink WhatsApp number");
+  }
+
+  async adminToggleEmail(userId: string): Promise<AdminUserRecord> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/email`,
+      { method: "PUT" },
+    );
+    if (!response.ok) throw new Error("Failed to enable email");
+    return response.json();
+  }
+
+  async adminDisableEmail(userId: string): Promise<void> {
+    const response = await this.fetchWithRefreshToken(
+      `${this.baseUrl}/admin/users/${userId}/email`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) throw new Error("Failed to disable email");
+  }
 }
 
+export interface AdminUserRecord {
+  id: string;
+  username: string;
+  email: string;
+  whatsapp_number: string | null;
+  auth_provider: string;
+  email_enabled: boolean;
+  email_address: string | null;
+}
+
+export { UserService };
 export const userService = new UserService();

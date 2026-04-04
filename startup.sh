@@ -3,8 +3,14 @@
 echo "Running database migrations..."
 aerich upgrade
 
-echo "Starting reindex process..."
-python main.py "" --reindex
+# Ensure Obsidian vault directory exists
+mkdir -p /app/data/obsidian
 
-echo "Starting Flask application..."
+# Start continuous Obsidian sync if enabled
+if [ "${OBSIDIAN_CONTINUOUS_SYNC}" = "true" ]; then
+    echo "Starting Obsidian continuous sync in background..."
+    ob sync --continuous &
+fi
+
+echo "Starting application..."
 python app.py

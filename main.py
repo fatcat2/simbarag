@@ -225,6 +225,10 @@ def filter_indexed_files(docs):
 def reindex():
     with sqlite3.connect("database/visited.db") as conn:
         c = conn.cursor()
+        # Ensure the table exists before trying to delete from it
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS indexed_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, paperless_id INTEGER)"
+        )
         c.execute("DELETE FROM indexed_documents")
         conn.commit()
 

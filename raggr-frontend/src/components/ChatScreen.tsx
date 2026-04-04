@@ -1,19 +1,20 @@
 import { useEffect, useState, useRef } from "react";
+import { LogOut, Shield, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { conversationService } from "../api/conversationService";
+import { userService } from "../api/userService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
+import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
+import { AdminPanel } from "./AdminPanel";
+import { cn } from "../lib/utils";
 import catIcon from "../assets/cat.png";
 
 type Message = {
   text: string;
-  speaker: "simba" | "user";
-};
-
-type QuestionAnswer = {
-  question: string;
-  answer: string;
+  speaker: "simba" | "user" | "tool";
+  image_key?: string | null;
 };
 
 type Conversation = {
@@ -25,22 +26,37 @@ type ChatScreenProps = {
   setAuthenticated: (isAuth: boolean) => void;
 };
 
+const TOOL_MESSAGES: Record<string, string> = {
+  simba_search: "🔍 Searching Simba's records...",
+  web_search: "🌐 Searching the web...",
+  get_current_date: "📅 Checking today's date...",
+  ynab_budget_summary: "💰 Checking budget summary...",
+  ynab_search_transactions: "💳 Looking up transactions...",
+  ynab_category_spending: "📊 Analyzing category spending...",
+  ynab_insights: "📈 Generating budget insights...",
+  obsidian_search_notes: "📝 Searching notes...",
+  obsidian_read_note: "📖 Reading note...",
+  obsidian_create_note: "✏️ Saving note...",
+  obsidian_create_task: "✅ Creating task...",
+  journal_get_today: "📔 Reading today's journal...",
+  journal_get_tasks: "📋 Getting tasks...",
+  journal_add_task: "➕ Adding task...",
+  journal_complete_task: "✔️ Completing task...",
+};
+
 export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const [query, setQuery] = useState<string>("");
-  const [answer, setAnswer] = useState<string>("");
   const [simbaMode, setSimbaMode] = useState<boolean>(false);
-  const [questionsAnswers, setQuestionsAnswers] = useState<QuestionAnswer[]>(
-    [],
-  );
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([
-    { title: "simba meow meow", id: "uuid" },
-  ]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showConversations, setShowConversations] = useState<boolean>(false);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [showAdminPanel, setShowAdminPanel] = useState<boolean>(false);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef<boolean>(true);
@@ -51,67 +67,49 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Cleanup effect to handle component unmounting
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Abort any pending requests when component unmounts
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      abortControllerRef.current?.abort();
     };
   }, []);
 
   const handleSelectConversation = (conversation: Conversation) => {
     setShowConversations(false);
     setSelectedConversation(conversation);
-    const loadMessages = async () => {
+    const load = async () => {
       try {
-        const fetchedConversation = await conversationService.getConversation(
-          conversation.id,
-        );
+        const fetched = await conversationService.getConversation(conversation.id);
         setMessages(
-          fetchedConversation.messages.map((message) => ({
-            text: message.text,
-            speaker: message.speaker,
-          })),
+          fetched.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })),
         );
-      } catch (error) {
-        console.error("Failed to load messages:", error);
+      } catch (err) {
+        console.error("Failed to load messages:", err);
       }
     };
-    loadMessages();
+    load();
   };
 
   const loadConversations = async () => {
     try {
-      const fetchedConversations =
-        await conversationService.getAllConversations();
-      const parsedConversations = fetchedConversations.map((conversation) => ({
-        id: conversation.id,
-        title: conversation.name,
-      }));
-      setConversations(parsedConversations);
-      setSelectedConversation(parsedConversations[0]);
-      console.log(parsedConversations);
-      console.log("JELLYFISH@");
-    } catch (error) {
-      console.error("Failed to load messages:", error);
+      const fetched = await conversationService.getAllConversations();
+      const parsed = fetched.map((c) => ({ id: c.id, title: c.name }));
+      setConversations(parsed);
+    } catch (err) {
+      console.error("Failed to load conversations:", err);
     }
   };
 
   const handleCreateNewConversation = async () => {
-    const newConversation = await conversationService.createConversation();
+    const newConv = await conversationService.createConversation();
     await loadConversations();
-    setSelectedConversation({
-      title: newConversation.name,
-      id: newConversation.id,
-    });
+    setSelectedConversation({ title: newConv.name, id: newConv.id });
   };
 
   useEffect(() => {
     loadConversations();
+    userService.getMe().then((me) => setIsAdmin(me.is_admin)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -119,90 +117,101 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   }, [messages]);
 
   useEffect(() => {
-    const loadMessages = async () => {
-      console.log(selectedConversation);
-      console.log("JELLYFISH");
-      if (selectedConversation == null) return;
+    const load = async () => {
+      if (!selectedConversation) return;
       try {
-        const conversation = await conversationService.getConversation(
-          selectedConversation.id,
-        );
-        // Update the conversation title in case it changed
-        setSelectedConversation({
-          id: conversation.id,
-          title: conversation.name,
-        });
-        setMessages(
-          conversation.messages.map((message) => ({
-            text: message.text,
-            speaker: message.speaker,
-          })),
-        );
-      } catch (error) {
-        console.error("Failed to load messages:", error);
+        const conv = await conversationService.getConversation(selectedConversation.id);
+        setSelectedConversation({ id: conv.id, title: conv.name });
+        setMessages(conv.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })));
+      } catch (err) {
+        console.error("Failed to load messages:", err);
       }
     };
-    loadMessages();
+    load();
   }, [selectedConversation?.id]);
 
   const handleQuestionSubmit = async () => {
-    if (!query.trim() || isLoading) return; // Don't submit empty messages or while loading
+    if ((!query.trim() && !pendingImage) || isLoading) return;
+
+    let activeConversation = selectedConversation;
+    if (!activeConversation) {
+      const newConv = await conversationService.createConversation();
+      activeConversation = { title: newConv.name, id: newConv.id };
+      setSelectedConversation(activeConversation);
+      setConversations((prev) => [activeConversation!, ...prev]);
+    }
+
+    // Capture pending image before clearing state
+    const imageFile = pendingImage;
 
     const currMessages = messages.concat([{ text: query, speaker: "user" }]);
     setMessages(currMessages);
-    setQuery(""); // Clear input immediately after submission
+    setQuery("");
+    setPendingImage(null);
     setIsLoading(true);
 
     if (simbaMode) {
-      console.log("simba mode activated");
-      const randomIndex = Math.floor(Math.random() * simbaAnswers.length);
-      const randomElement = simbaAnswers[randomIndex];
-      setAnswer(randomElement);
-      setQuestionsAnswers(
-        questionsAnswers.concat([
-          {
-            question: query,
-            answer: randomElement,
-          },
-        ]),
-      );
+      const randomElement = simbaAnswers[Math.floor(Math.random() * simbaAnswers.length)];
+      setMessages((prev) => prev.concat([{ text: randomElement, speaker: "simba" }]));
       setIsLoading(false);
       return;
     }
 
-    // Create a new AbortController for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     try {
-      const result = await conversationService.sendQuery(
+      // Upload image first if present
+      let imageKey: string | undefined;
+      if (imageFile) {
+        const uploadResult = await conversationService.uploadImage(
+          imageFile,
+          activeConversation.id,
+        );
+        imageKey = uploadResult.image_key;
+
+        // Update the user message with the image key
+        setMessages((prev) => {
+          const updated = [...prev];
+          // Find the last user message we just added
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].speaker === "user") {
+              updated[i] = { ...updated[i], image_key: imageKey };
+              break;
+            }
+          }
+          return updated;
+        });
+      }
+
+      await conversationService.streamQuery(
         query,
-        selectedConversation.id,
+        activeConversation.id,
+        (event) => {
+          if (!isMountedRef.current) return;
+          if (event.type === "tool_start") {
+            const friendly = TOOL_MESSAGES[event.tool] ?? `🔧 Using ${event.tool}...`;
+            setMessages((prev) => prev.concat([{ text: friendly, speaker: "tool" }]));
+          } else if (event.type === "response") {
+            setMessages((prev) => prev.concat([{ text: event.message, speaker: "simba" }]));
+          } else if (event.type === "error") {
+            console.error("Stream error:", event.message);
+          }
+        },
         abortController.signal,
-      );
-      setQuestionsAnswers(
-        questionsAnswers.concat([{ question: query, answer: result.response }]),
-      );
-      setMessages(
-        currMessages.concat([{ text: result.response, speaker: "simba" }]),
+        imageKey,
       );
     } catch (error) {
-      // Ignore abort errors (these are intentional cancellations)
       if (error instanceof Error && error.name === "AbortError") {
         console.log("Request was aborted");
       } else {
         console.error("Failed to send query:", error);
-        // If session expired, redirect to login
         if (error instanceof Error && error.message.includes("Session expired")) {
           setAuthenticated(false);
         }
       }
     } finally {
-      // Only update loading state if component is still mounted
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-      // Clear the abort controller reference
+      if (isMountedRef.current) setIsLoading(false);
       abortControllerRef.current = null;
     }
   };
@@ -211,128 +220,216 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     setQuery(event.target.value);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter, but allow Shift+Enter for new line
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
+  const handleKeyDown = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const kev = event as unknown as React.KeyboardEvent<HTMLTextAreaElement>;
+    if (kev.key === "Enter" && !kev.shiftKey) {
+      kev.preventDefault();
       handleQuestionSubmit();
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    setAuthenticated(false);
+  };
+
   return (
-    <div className="h-screen flex flex-row bg-[#F9F5EB]">
-      {/* Sidebar - Expanded */}
+    <div className="h-screen h-[100dvh] flex flex-row bg-cream overflow-hidden">
+      {/* ── Desktop Sidebar ─────────────────────────────── */}
       <aside
-        className={`hidden md:flex md:flex-col bg-[#F9F5EB] border-r border-gray-200 p-4 overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? "w-20" : "w-64"}`}
+        className={cn(
+          "hidden md:flex md:flex-col",
+          "bg-sidebar-bg transition-all duration-300 ease-in-out",
+          sidebarCollapsed ? "w-[56px]" : "w-64",
+        )}
       >
-        {!sidebarCollapsed ? (
-          <div className="bg-[#F9F5EB]">
-            <div className="flex flex-row items-center gap-2 mb-6">
-              <img
-                src={catIcon}
-                alt="Simba"
-                className="cursor-pointer hover:opacity-80"
-                onClick={() => setSidebarCollapsed(true)}
-              />
-              <h2 className="text-3xl bg-[#F9F5EB] font-semibold">asksimba!</h2>
-            </div>
-            <ConversationList
-              conversations={conversations}
-              onCreateNewConversation={handleCreateNewConversation}
-              onSelectConversation={handleSelectConversation}
-            />
-            <div className="mt-auto pt-4">
-              <button
-                className="w-full p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm"
-                onClick={() => setAuthenticated(false)}
-              >
-                logout
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4">
+        {sidebarCollapsed ? (
+          /* Collapsed state */
+          <div className="flex flex-col items-center py-4 gap-4 h-full">
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-cream/50 hover:text-cream hover:bg-white/10 transition-all cursor-pointer"
+            >
+              <PanelLeftOpen size={18} />
+            </button>
             <img
               src={catIcon}
               alt="Simba"
-              className="cursor-pointer hover:opacity-80"
-              onClick={() => setSidebarCollapsed(false)}
+              className="w-12 h-12 opacity-70 mt-1"
             />
+          </div>
+        ) : (
+          /* Expanded state */
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
+              <div className="flex items-center gap-2.5">
+                <img src={catIcon} alt="Simba" className="w-12 h-12" />
+                <h2
+                  className="text-lg font-bold text-cream tracking-tight"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  asksimba
+                </h2>
+              </div>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-cream/40 hover:text-cream hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <PanelLeftClose size={15} />
+              </button>
+            </div>
+
+            {/* Conversations */}
+            <div className="flex-1 overflow-y-auto px-2 py-3">
+              <ConversationList
+                conversations={conversations}
+                onCreateNewConversation={handleCreateNewConversation}
+                onSelectConversation={handleSelectConversation}
+                selectedId={selectedConversation?.id}
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="px-2 pb-3 pt-2 border-t border-white/8 flex flex-col gap-0.5">
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAdminPanel(true)}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
+                >
+                  <Shield size={14} />
+                  <span>Admin</span>
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
+              >
+                <LogOut size={14} />
+                <span>Sign out</span>
+              </button>
+            </div>
           </div>
         )}
       </aside>
 
-      {/* Main chat area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* Admin Panel modal */}
+      {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
+
+      {/* ── Main chat area ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex flex-row justify-between items-center gap-3 p-4 border-b border-gray-200 bg-white">
-          <div className="flex flex-row items-center gap-2">
-            <img src={catIcon} alt="Simba" className="w-10 h-10" />
-            <h1 className="text-xl">asksimba!</h1>
-          </div>
-          <div className="flex flex-row gap-2">
-            <button
-              className="p-2 border border-green-400 bg-green-200 hover:bg-green-400 cursor-pointer rounded-md text-sm"
-              onClick={() => setShowConversations(!showConversations)}
+        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">
+          <div className="flex items-center gap-2">
+            <img src={catIcon} alt="Simba" className="w-12 h-12" />
+            <h1
+              className="text-base font-bold text-charcoal"
+              style={{ fontFamily: "var(--font-display)" }}
             >
-              {showConversations ? "hide" : "show"}
+              asksimba
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
+              onClick={() => setShowConversations((v) => !v)}
+            >
+              {showConversations ? <X size={16} /> : <Menu size={16} />}
             </button>
             <button
-              className="p-2 border border-red-400 bg-red-200 hover:bg-red-400 cursor-pointer rounded-md text-sm"
-              onClick={() => setAuthenticated(false)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
+              onClick={handleLogout}
             >
-              logout
+              <LogOut size={15} />
             </button>
           </div>
         </header>
 
-        {/* Messages area */}
-        {selectedConversation && (
-          <div className="sticky top-0 mx-auto w-full">
-            <div className="bg-[#F9F5EB] text-black px-6 w-full py-3">
-              <h2 className="text-lg font-semibold">
-                {selectedConversation.title || "Untitled Conversation"}
-              </h2>
-            </div>
-          </div>
-        )}
-        <div className="flex-1 overflow-y-auto relative px-4 py-6">
-          {/* Floating conversation name */}
-
-          <div className="max-w-2xl mx-auto flex flex-col gap-4">
+        {messages.length === 0 ? (
+          /* ── Empty / homepage state ── */
+          <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
+            {/* Mobile conversation drawer */}
             {showConversations && (
-              <div className="md:hidden">
+              <div className="md:hidden w-full max-w-2xl bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                 <ConversationList
                   conversations={conversations}
                   onCreateNewConversation={handleCreateNewConversation}
                   onSelectConversation={handleSelectConversation}
+                  selectedId={selectedConversation?.id}
+                  variant="light"
                 />
               </div>
             )}
-            {messages.map((msg, index) => {
-              if (msg.speaker === "simba") {
-                return <AnswerBubble key={index} text={msg.text} />;
-              }
-              return <QuestionBubble key={index} text={msg.text} />;
-            })}
-            {isLoading && <AnswerBubble text="" loading={true} />}
-            <div ref={messagesEndRef} />
+            <div className="relative">
+              <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
+              <img src={catIcon} alt="Simba" className="relative w-36 h-36" />
+            </div>
+            <h1
+              className="text-2xl font-bold text-charcoal"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Ask me anything
+            </h1>
+            <div className="w-full max-w-2xl">
+              <MessageInput
+                query={query}
+                handleQueryChange={handleQueryChange}
+                handleKeyDown={handleKeyDown}
+                handleQuestionSubmit={handleQuestionSubmit}
+                setSimbaMode={setSimbaMode}
+                isLoading={isLoading}
+                pendingImage={pendingImage}
+                onImageSelect={(file) => setPendingImage(file)}
+                onClearImage={() => setPendingImage(null)}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          /* ── Active chat state ── */
+          <>
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <div className="max-w-2xl mx-auto flex flex-col gap-3">
+                {/* Mobile conversation drawer */}
+                {showConversations && (
+                  <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
+                    <ConversationList
+                      conversations={conversations}
+                      onCreateNewConversation={handleCreateNewConversation}
+                      onSelectConversation={handleSelectConversation}
+                      selectedId={selectedConversation?.id}
+                      variant="light"
+                    />
+                  </div>
+                )}
 
-        {/* Input area */}
-        <footer className="p-4 bg-[#F9F5EB]">
-          <div className="max-w-2xl mx-auto">
-            <MessageInput
-              query={query}
-              handleQueryChange={handleQueryChange}
-              handleKeyDown={handleKeyDown}
-              handleQuestionSubmit={handleQuestionSubmit}
-              setSimbaMode={setSimbaMode}
-              isLoading={isLoading}
-            />
-          </div>
-        </footer>
+                {messages.map((msg, index) => {
+                  if (msg.speaker === "tool")
+                    return <ToolBubble key={index} text={msg.text} />;
+                  if (msg.speaker === "simba")
+                    return <AnswerBubble key={index} text={msg.text} />;
+                  return <QuestionBubble key={index} text={msg.text} image_key={msg.image_key} />;
+                })}
+
+                {isLoading && <AnswerBubble text="" loading={true} />}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            <footer className="border-t border-sand-light/40 bg-cream/80 backdrop-blur-sm">
+              <div className="max-w-2xl mx-auto px-4 py-3">
+                <MessageInput
+                  query={query}
+                  handleQueryChange={handleQueryChange}
+                  handleKeyDown={handleKeyDown}
+                  handleQuestionSubmit={handleQuestionSubmit}
+                  setSimbaMode={setSimbaMode}
+                  isLoading={isLoading}
+                />
+              </div>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );

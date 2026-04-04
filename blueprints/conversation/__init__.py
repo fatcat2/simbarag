@@ -1,12 +1,19 @@
 import datetime
+import json
+import logging
+import uuid
 
-from quart import Blueprint, jsonify, request
+from quart import Blueprint, Response, jsonify, make_response, request
 from quart_jwt_extended import (
     get_jwt_identity,
     jwt_refresh_token_required,
 )
 
 import blueprints.users.models
+from utils.image_process import analyze_user_image
+from utils.image_upload import ImageValidationError, process_image
+from utils.s3_client import get_image as s3_get_image
+from utils.s3_client import upload_image as s3_upload_image
 
 from .agents import main_agent
 from .logic import (
@@ -19,10 +26,40 @@ from .models import (
     PydConversation,
     PydListConversation,
 )
+from .prompts import SIMBA_SYSTEM_PROMPT
 
 conversation_blueprint = Blueprint(
     "conversation_api", __name__, url_prefix="/api/conversation"
 )
+
+_SYSTEM_PROMPT = SIMBA_SYSTEM_PROMPT
+
+
+def _build_messages_payload(
+    conversation, query_text: str, image_description: str | None = None
+) -> list:
+    recent_messages = (
+        conversation.messages[-10:]
+        if len(conversation.messages) > 10
+        else conversation.messages
+    )
+    messages_payload = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    for msg in recent_messages[:-1]:  # Exclude the message we just added
+        role = "user" if msg.speaker == "user" else "assistant"
+        text = msg.text
+        if msg.image_key and role == "user":
+            text = f"[User sent an image]\n{text}"
+        messages_payload.append({"role": role, "content": text})
+
+    # Build the current user message with optional image description
+    if image_description:
+        content = f"[Image analysis: {image_description}]"
+        if query_text:
+            content = f"{query_text}\n\n{content}"
+    else:
+        content = query_text
+    messages_payload.append({"role": "user", "content": content})
+    return messages_payload
 
 
 @conversation_blueprint.post("/query")
@@ -42,68 +79,7 @@ async def query():
         user=user,
     )
 
-    # Build conversation history from recent messages (last 10 for context)
-    recent_messages = (
-        conversation.messages[-10:]
-        if len(conversation.messages) > 10
-        else conversation.messages
-    )
-
-    messages_payload = [
-        {
-            "role": "system",
-            "content": """You are a helpful cat assistant named Simba that understands veterinary terms. When there are questions to you specifically, they are referring to Simba the cat. Answer the user in as if you were a cat named Simba. Don't act too catlike. Be assertive.
-
-SIMBA FACTS (as of January 2026):
-- Name: Simba
-- Species: Feline (Domestic Short Hair / American Short Hair)
-- Sex: Male, Neutered
-- Date of Birth: August 8, 2016 (approximately 9 years 5 months old)
-- Color: Orange
-- Current Weight: 16 lbs (as of 1/8/2026)
-- Owner: Ryan Chen
-- Location: Long Island City, NY
-- Veterinarian: Court Square Animal Hospital
-
-Medical Conditions:
-- Hypertrophic Cardiomyopathy (HCM): Diagnosed 12/11/2025. Concentric left ventricular hypertrophy with no left atrial dilation. Grade II-III/VI systolic heart murmur. No cardiac medications currently needed. Must avoid Domitor, acepromazine, and ketamine during anesthesia.
-- Dental Issues: Prior extraction of teeth 307 and 407 due to resorption. Tooth 107 extracted on 1/8/2026. Early resorption lesions present on teeth 207, 309, and 409.
-
-Recent Medical Events:
-- 1/8/2026: Dental cleaning and tooth 107 extraction. Prescribed Onsior for 3 days. Oravet sealant applied.
-- 12/11/2025: Echocardiogram confirming HCM diagnosis. Pre-op bloodwork was normal.
-- 12/1/2025: Visited for decreased appetite/nausea. Received subcutaneous fluids and Cerenia.
-
-Diet & Lifestyle:
-- Diet: Hill's I/D wet and dry food
-- Supplements: Plaque Off
-- Indoor only cat, only pet in the household
-
-Upcoming Appointments:
-- Rabies Vaccine: Due 2/19/2026
-- Routine Examination: Due 6/1/2026
-- FVRCP-3yr Vaccine: Due 10/2/2026
-
-IMPORTANT: When users ask factual questions about Simba's health, medical history, veterinary visits, medications, weight, or any information that would be in documents, you MUST use the simba_search tool to retrieve accurate information before answering. Do not rely on general knowledge - always search the documents for factual questions.
-
-BUDGET & FINANCE (YNAB Integration):
-You have access to Ryan's budget data through YNAB (You Need A Budget). When users ask about financial matters, use the appropriate YNAB tools:
-- Use ynab_budget_summary for overall budget health and status questions
-- Use ynab_search_transactions to find specific purchases or spending at particular stores
-- Use ynab_category_spending to analyze spending by category for a month
-- Use ynab_insights to provide spending trends, patterns, and recommendations
-Always use these tools when asked about budgets, spending, transactions, or financial health.""",
-        }
-    ]
-
-    # Add recent conversation history
-    for msg in recent_messages[:-1]:  # Exclude the message we just added
-        role = "user" if msg.speaker == "user" else "assistant"
-        messages_payload.append({"role": role, "content": msg.text})
-
-    # Add current query
-    messages_payload.append({"role": "user", "content": query})
-
+    messages_payload = _build_messages_payload(conversation, query)
     payload = {"messages": messages_payload}
 
     response = await main_agent.ainvoke(payload)
@@ -115,6 +91,142 @@ Always use these tools when asked about budgets, spending, transactions, or fina
         user=user,
     )
     return jsonify({"response": message})
+
+
+@conversation_blueprint.post("/upload-image")
+@jwt_refresh_token_required
+async def upload_image():
+    current_user_uuid = get_jwt_identity()
+    await blueprints.users.models.User.get(id=current_user_uuid)
+
+    files = await request.files
+    form = await request.form
+    file = files.get("file")
+    conversation_id = form.get("conversation_id")
+
+    if not file or not conversation_id:
+        return jsonify({"error": "file and conversation_id are required"}), 400
+
+    file_bytes = file.read()
+    content_type = file.content_type or "image/jpeg"
+
+    try:
+        processed_bytes, output_content_type = process_image(file_bytes, content_type)
+    except ImageValidationError as e:
+        return jsonify({"error": str(e)}), 400
+
+    ext = output_content_type.split("/")[-1]
+    if ext == "jpeg":
+        ext = "jpg"
+    key = f"conversations/{conversation_id}/{uuid.uuid4()}.{ext}"
+
+    await s3_upload_image(processed_bytes, key, output_content_type)
+
+    return jsonify(
+        {
+            "image_key": key,
+            "image_url": f"/api/conversation/image/{key}",
+        }
+    )
+
+
+@conversation_blueprint.get("/image/<path:image_key>")
+@jwt_refresh_token_required
+async def serve_image(image_key: str):
+    try:
+        image_bytes, content_type = await s3_get_image(image_key)
+    except Exception:
+        return jsonify({"error": "Image not found"}), 404
+
+    return Response(
+        image_bytes,
+        content_type=content_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
+@conversation_blueprint.post("/stream-query")
+@jwt_refresh_token_required
+async def stream_query():
+    current_user_uuid = get_jwt_identity()
+    user = await blueprints.users.models.User.get(id=current_user_uuid)
+    data = await request.get_json()
+    query_text = data.get("query")
+    conversation_id = data.get("conversation_id")
+    image_key = data.get("image_key")
+    conversation = await get_conversation_by_id(conversation_id)
+    await conversation.fetch_related("messages")
+    await add_message_to_conversation(
+        conversation=conversation,
+        message=query_text or "",
+        speaker="user",
+        user=user,
+        image_key=image_key,
+    )
+
+    # If an image was uploaded, analyze it with the vision model
+    image_description = None
+    if image_key:
+        try:
+            image_bytes, _ = await s3_get_image(image_key)
+            image_description = await analyze_user_image(image_bytes)
+            logging.info(f"Image analysis complete for {image_key}")
+        except Exception as e:
+            logging.error(f"Failed to analyze image: {e}")
+            image_description = "[Image could not be analyzed]"
+
+    messages_payload = _build_messages_payload(
+        conversation, query_text or "", image_description
+    )
+    payload = {"messages": messages_payload}
+
+    async def event_generator():
+        final_message = None
+        try:
+            async for event in main_agent.astream_events(payload, version="v2"):
+                event_type = event.get("event")
+
+                if event_type == "on_tool_start":
+                    yield f"data: {json.dumps({'type': 'tool_start', 'tool': event['name']})}\n\n"
+
+                elif event_type == "on_tool_end":
+                    yield f"data: {json.dumps({'type': 'tool_end', 'tool': event['name']})}\n\n"
+
+                elif event_type == "on_chain_end":
+                    output = event.get("data", {}).get("output")
+                    if isinstance(output, dict):
+                        msgs = output.get("messages", [])
+                        if msgs:
+                            last_msg = msgs[-1]
+                            content = getattr(last_msg, "content", None)
+                            if isinstance(content, str) and content:
+                                final_message = content
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        if final_message:
+            await add_message_to_conversation(
+                conversation=conversation,
+                message=final_message,
+                speaker="simba",
+                user=user,
+            )
+            yield f"data: {json.dumps({'type': 'response', 'message': final_message})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'No response generated'})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return await make_response(
+        event_generator(),
+        200,
+        {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @conversation_blueprint.route("/<conversation_id>")
@@ -134,6 +246,7 @@ async def get_conversation(conversation_id: str):
                 "text": msg.text,
                 "speaker": msg.speaker.value,
                 "created_at": msg.created_at.isoformat(),
+                "image_key": msg.image_key,
             }
         )
     name = conversation.name
