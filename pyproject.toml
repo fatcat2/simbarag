@@ -42,6 +42,17 @@ dependencies = [
     "aioboto3>=13.0.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
 [tool.aerich]
 tortoise_orm = "config.db.TORTOISE_CONFIG"
 location = "./migrations"

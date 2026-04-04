@@ -1,4 +1,4 @@
-.PHONY: deploy build up down restart logs migrate migrate-new frontend
+.PHONY: deploy build up down restart logs migrate migrate-new frontend test
 
 # Build and deploy
 deploy: build up
@@ -28,6 +28,13 @@ migrate-new:
 
 migrate-history:
 	docker compose exec raggr aerich history
+
+# Tests
+test:
+	pytest tests/ -v
+
+test-cov:
+	pytest tests/ -v --cov
 
 # Frontend
 frontend:
