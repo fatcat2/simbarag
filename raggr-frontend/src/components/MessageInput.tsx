@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, ImagePlus, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Textarea } from "./ui/textarea";
@@ -15,7 +15,7 @@ type MessageInputProps = {
   onClearImage: () => void;
 };
 
-export const MessageInput = ({
+export const MessageInput = React.memo(({
   query,
   handleKeyDown,
   handleQueryChange,
@@ -28,6 +28,18 @@ export const MessageInput = ({
 }: MessageInputProps) => {
   const [simbaMode, setLocalSimbaMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Create blob URL once per file, revoke on cleanup
+  const previewUrl = useMemo(
+    () => (pendingImage ? URL.createObjectURL(pendingImage) : null),
+    [pendingImage],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const toggleSimbaMode = () => {
     const next = !simbaMode;
@@ -59,7 +71,7 @@ export const MessageInput = ({
         <div className="px-3 pt-3">
           <div className="relative inline-block">
             <img
-              src={URL.createObjectURL(pendingImage)}
+              src={previewUrl!}
               alt="Pending upload"
               className="h-20 rounded-lg object-cover border border-sand"
             />
@@ -145,4 +157,4 @@ export const MessageInput = ({
       </div>
     </div>
   );
-};
+});
