@@ -1,7 +1,10 @@
-.PHONY: deploy build up down restart logs migrate migrate-new frontend test
+.PHONY: deploy redeploy build up down restart logs migrate migrate-new frontend test
 
 # Build and deploy
 deploy: build up
+
+redeploy:
+	git pull && $(MAKE) down && $(MAKE) up
 
 build:
 	docker compose build raggr
