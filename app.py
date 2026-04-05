@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from quart import Quart, jsonify, render_template, request, send_from_directory
@@ -38,6 +39,8 @@ app = Quart(
 )
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "SECRET_KEY")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
 jwt = JWTManager(app)
 
