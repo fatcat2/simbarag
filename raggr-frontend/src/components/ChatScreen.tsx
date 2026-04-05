@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { LogOut, Shield, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { conversationService } from "../api/conversationService";
 import { userService } from "../api/userService";
@@ -63,9 +63,13 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isLoading ? "instant" : "smooth",
+      });
+    });
+  }, [isLoading]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -130,7 +134,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     load();
   }, [selectedConversation?.id]);
 
-  const handleQuestionSubmit = async () => {
+  const handleQuestionSubmit = useCallback(async () => {
     if ((!query.trim() && !pendingImage) || isLoading) return;
 
     let activeConversation = selectedConversation;
@@ -214,19 +218,22 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
       if (isMountedRef.current) setIsLoading(false);
       abortControllerRef.current = null;
     }
-  };
+  }, [query, pendingImage, isLoading, selectedConversation, simbaMode, messages, setAuthenticated]);
 
-  const handleQueryChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleQueryChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(event.target.value);
-  };
+  }, []);
 
-  const handleKeyDown = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const kev = event as unknown as React.KeyboardEvent<HTMLTextAreaElement>;
     if (kev.key === "Enter" && !kev.shiftKey) {
       kev.preventDefault();
       handleQuestionSubmit();
     }
-  };
+  }, [handleQuestionSubmit]);
+
+  const handleImageSelect = useCallback((file: File) => setPendingImage(file), []);
+  const handleClearImage = useCallback(() => setPendingImage(null), []);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -380,8 +387,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                 setSimbaMode={setSimbaMode}
                 isLoading={isLoading}
                 pendingImage={pendingImage}
-                onImageSelect={(file) => setPendingImage(file)}
-                onClearImage={() => setPendingImage(null)}
+                onImageSelect={handleImageSelect}
+                onClearImage={handleClearImage}
               />
             </div>
           </div>
@@ -416,7 +423,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               </div>
             </div>
 
-            <footer className="border-t border-sand-light/40 bg-cream/80 backdrop-blur-sm">
+            <footer className="border-t border-sand-light/40 bg-cream">
               <div className="max-w-2xl mx-auto px-4 py-3">
                 <MessageInput
                   query={query}
