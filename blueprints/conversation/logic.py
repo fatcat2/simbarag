@@ -19,6 +19,12 @@ async def add_message_to_conversation(
     image_key: str | None = None,
 ) -> ConversationMessage:
     print(conversation, message, speaker)
+
+    # Name the conversation after the first user message
+    if speaker == "user" and not await conversation.messages.all().exists():
+        conversation.name = message[:100]
+        await conversation.save()
+
     message = await ConversationMessage.create(
         text=message,
         speaker=speaker,

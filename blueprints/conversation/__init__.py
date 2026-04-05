@@ -275,7 +275,7 @@ async def create_conversation():
 async def get_all_conversations():
     user_uuid = get_jwt_identity()
     user = await blueprints.users.models.User.get(id=user_uuid)
-    conversations = Conversation.filter(user=user)
+    conversations = Conversation.filter(user=user).order_by("-updated_at")
     serialized_conversations = await PydListConversation.from_queryset(conversations)
 
     return jsonify(serialized_conversations.model_dump())
