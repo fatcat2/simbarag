@@ -35,7 +35,7 @@ class OIDCUserService:
                 claims.get("preferred_username") or claims.get("name") or user.username
             )
             # Update LDAP groups from claims
-            user.ldap_groups = claims.get("groups", [])
+            user.ldap_groups = claims.get("groups") or []
             await user.save()
             return user
 
@@ -48,7 +48,7 @@ class OIDCUserService:
                 user.oidc_subject = oidc_subject
                 user.auth_provider = "oidc"
                 user.password = None  # Clear password
-                user.ldap_groups = claims.get("groups", [])
+                user.ldap_groups = claims.get("groups") or []
                 await user.save()
                 return user
 
@@ -61,7 +61,7 @@ class OIDCUserService:
         )
 
         # Extract LDAP groups from claims
-        groups = claims.get("groups", [])
+        groups = claims.get("groups") or []
 
         user = await User.create(
             id=uuid4(),
