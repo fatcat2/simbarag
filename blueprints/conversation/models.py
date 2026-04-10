@@ -1,5 +1,4 @@
 import enum
-from dataclasses import dataclass
 
 from tortoise import fields
 from tortoise.contrib.pydantic import (
@@ -7,12 +6,6 @@ from tortoise.contrib.pydantic import (
     pydantic_queryset_creator,
 )
 from tortoise.models import Model
-
-
-@dataclass
-class RenameConversationOutputSchema:
-    title: str
-    justification: str
 
 
 class Speaker(enum.Enum):
