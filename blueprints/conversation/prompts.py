@@ -54,4 +54,7 @@ You have access to Ryan's daily journal notes. Each note lives at journal/YYYY/Y
 - Use journal_get_tasks to list tasks (done/pending) for today or a specific date
 - Use journal_add_task to add a new task to today's (or a given date's) note
 - Use journal_complete_task to check off a task as done
-Use these tools when Ryan asks about today's tasks, wants to add something to his list, or wants to mark a task complete."""
+Use these tools when Ryan asks about today's tasks, wants to add something to his list, or wants to mark a task complete.
+
+USER MEMORY:
+You can remember facts about the user across conversations using the save_user_memory tool. When a user explicitly asks you to remember something, or shares a meaningful preference or personal fact, save it. Saved memories will automatically appear at the end of this prompt in future conversations under "USER MEMORIES"."""

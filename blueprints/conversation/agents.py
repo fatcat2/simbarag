@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.chat_models import BaseChatModel
 from langchain.tools import tool
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from tavily import AsyncTavilyClient
 
+from blueprints.conversation.memory import save_memory
 from blueprints.rag.logic import query_vector_store
 from utils.obsidian_service import ObsidianService
 from utils.ynab_service import YNABService
@@ -589,8 +591,35 @@ async def obsidian_create_task(
         return f"Error creating task: {str(e)}"
 
 
+@tool
+async def save_user_memory(content: str, config: RunnableConfig) -> str:
+    """Save a fact or preference about the user for future conversations.
+
+    Use this tool when the user:
+    - Explicitly asks you to remember something ("remember that...", "keep in mind...")
+    - Shares a personal preference that would be useful in future conversations
+      (e.g., "I prefer metric units", "my cat's name is Luna")
+    - Tells you a meaningful personal fact (e.g., "I'm allergic to peanuts")
+
+    Do NOT save:
+    - Trivial or ephemeral info (e.g., "I'm tired today")
+    - Information already in the system prompt or documents
+    - Conversation-specific context that won't matter later
+
+    Args:
+        content: A concise statement of the fact or preference to remember.
+                 Write it as a standalone sentence (e.g., "User prefers dark mode"
+                 rather than "likes dark mode").
+
+    Returns:
+        Confirmation that the memory was saved.
+    """
+    user_id = config["configurable"]["user_id"]
+    return await save_memory(user_id=user_id, content=content)
+
+
 # Create tools list based on what's available
-tools = [get_current_date, simba_search, web_search]
+tools = [get_current_date, simba_search, web_search, save_user_memory]
 if ynab_enabled:
     tools.extend(
         [

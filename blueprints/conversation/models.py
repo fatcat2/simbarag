@@ -47,6 +47,17 @@ class ConversationMessage(Model):
         table = "conversation_messages"
 
 
+class UserMemory(Model):
+    id = fields.UUIDField(primary_key=True)
+    user = fields.ForeignKeyField("models.User", related_name="memories")
+    content = fields.TextField()
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "user_memories"
+
+
 PydConversationMessage = pydantic_model_creator(ConversationMessage)
 PydConversation = pydantic_model_creator(
     Conversation, name="Conversation", allow_cycles=True, exclude=("user",)

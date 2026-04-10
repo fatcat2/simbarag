@@ -22,6 +22,7 @@ from .logic import (
     get_conversation_by_id,
     rename_conversation,
 )
+from .memory import get_memories_for_user
 from .models import (
     Conversation,
     PydConversation,
@@ -36,15 +37,27 @@ conversation_blueprint = Blueprint(
 _SYSTEM_PROMPT = SIMBA_SYSTEM_PROMPT
 
 
+async def _build_system_prompt_with_memories(user_id: str) -> str:
+    """Append user memories to the base system prompt."""
+    memories = await get_memories_for_user(user_id)
+    if not memories:
+        return _SYSTEM_PROMPT
+    memory_block = "\n".join(f"- {m}" for m in memories)
+    return f"{_SYSTEM_PROMPT}\n\nUSER MEMORIES (facts the user has asked you to remember):\n{memory_block}"
+
+
 def _build_messages_payload(
-    conversation, query_text: str, image_description: str | None = None
+    conversation,
+    query_text: str,
+    image_description: str | None = None,
+    system_prompt: str | None = None,
 ) -> list:
     recent_messages = (
         conversation.messages[-10:]
         if len(conversation.messages) > 10
         else conversation.messages
     )
-    messages_payload = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    messages_payload = [{"role": "system", "content": system_prompt or _SYSTEM_PROMPT}]
     for msg in recent_messages[:-1]:  # Exclude the message we just added
         role = "user" if msg.speaker == "user" else "assistant"
         text = msg.text
@@ -80,10 +93,14 @@ async def query():
         user=user,
     )
 
-    messages_payload = _build_messages_payload(conversation, query)
+    system_prompt = await _build_system_prompt_with_memories(str(user.id))
+    messages_payload = _build_messages_payload(
+        conversation, query, system_prompt=system_prompt
+    )
     payload = {"messages": messages_payload}
+    agent_config = {"configurable": {"user_id": str(user.id)}}
 
-    response = await main_agent.ainvoke(payload)
+    response = await main_agent.ainvoke(payload, config=agent_config)
     message = response.get("messages", [])[-1].content
     await add_message_to_conversation(
         conversation=conversation,
@@ -163,15 +180,19 @@ async def stream_query():
             logging.error(f"Failed to analyze image: {e}")
             image_description = "[Image could not be analyzed]"
 
+    system_prompt = await _build_system_prompt_with_memories(str(user.id))
     messages_payload = _build_messages_payload(
-        conversation, query_text or "", image_description
+        conversation, query_text or "", image_description, system_prompt=system_prompt
     )
     payload = {"messages": messages_payload}
+    agent_config = {"configurable": {"user_id": str(user.id)}}
 
     async def event_generator():
         final_message = None
         try:
-            async for event in main_agent.astream_events(payload, version="v2"):
+            async for event in main_agent.astream_events(
+                payload, version="v2", config=agent_config
+            ):
                 event_type = event.get("event")
 
                 if event_type == "on_tool_start":
