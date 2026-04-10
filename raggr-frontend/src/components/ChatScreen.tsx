@@ -120,20 +120,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!selectedConversation) return;
-      try {
-        const conv = await conversationService.getConversation(selectedConversation.id);
-        setSelectedConversation({ id: conv.id, title: conv.name });
-        setMessages(conv.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })));
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-      }
-    };
-    load();
-  }, [selectedConversation?.id]);
-
   const handleQuestionSubmit = useCallback(async () => {
     if ((!query.trim() && !pendingImage) || isLoading) return;
 
@@ -215,7 +201,10 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         }
       }
     } finally {
-      if (isMountedRef.current) setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        loadConversations();
+      }
       abortControllerRef.current = null;
     }
   }, [query, pendingImage, isLoading, selectedConversation, simbaMode, messages, setAuthenticated]);
