@@ -135,17 +135,10 @@ async def get_messages():
             }
         )
 
-    name = conversation.name
-    if len(messages) > 8:
-        name = await blueprints.conversation.logic.rename_conversation(
-            user=user,
-            conversation=conversation,
-        )
-
     return jsonify(
         {
             "id": str(conversation.id),
-            "name": name,
+            "name": conversation.name,
             "messages": messages,
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),

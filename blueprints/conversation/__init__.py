@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import uuid
@@ -20,7 +19,6 @@ from .agents import main_agent
 from .logic import (
     add_message_to_conversation,
     get_conversation_by_id,
-    rename_conversation,
 )
 from .memory import get_memories_for_user
 from .models import (
@@ -242,8 +240,6 @@ async def stream_query():
 @jwt_refresh_token_required
 async def get_conversation(conversation_id: str):
     conversation = await Conversation.get(id=conversation_id)
-    current_user_uuid = get_jwt_identity()
-    user = await blueprints.users.models.User.get(id=current_user_uuid)
     await conversation.fetch_related("messages")
 
     # Manually serialize the conversation with messages
@@ -258,18 +254,10 @@ async def get_conversation(conversation_id: str):
                 "image_key": msg.image_key,
             }
         )
-    name = conversation.name
-    if len(messages) > 8 and "datetime" in name.lower():
-        name = await rename_conversation(
-            user=user,
-            conversation=conversation,
-        )
-        print(name)
-
     return jsonify(
         {
             "id": str(conversation.id),
-            "name": name,
+            "name": conversation.name,
             "messages": messages,
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),
@@ -283,7 +271,7 @@ async def create_conversation():
     user_uuid = get_jwt_identity()
     user = await blueprints.users.models.User.get(id=user_uuid)
     conversation = await Conversation.create(
-        name=f"{user.username} {datetime.datetime.now().timestamp}",
+        name="New Conversation",
         user=user,
     )
 
