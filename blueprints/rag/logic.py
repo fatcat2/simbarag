@@ -38,6 +38,7 @@ def _get_vector_store() -> PGVector:
             connection=_pgvector_url,
             use_jsonb=True,
             create_extension=False,  # created by docker init script
+            async_mode=True,
         )
     return _vector_store
 
