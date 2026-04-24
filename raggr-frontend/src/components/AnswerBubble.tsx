@@ -1,3 +1,4 @@
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "../lib/utils";
 
@@ -6,7 +7,7 @@ type AnswerBubbleProps = {
   loading?: boolean;
 };
 
-export const AnswerBubble = ({ text, loading }: AnswerBubbleProps) => {
+export const AnswerBubble = React.memo(({ text, loading }: AnswerBubbleProps) => {
   return (
     <div className="flex justify-start message-enter">
       <div
@@ -17,7 +18,6 @@ export const AnswerBubble = ({ text, loading }: AnswerBubbleProps) => {
           "overflow-hidden",
         )}
       >
-        {/* amber accent bar */}
         <div className="h-0.5 w-full bg-gradient-to-r from-amber-soft via-amber-glow/50 to-transparent" />
 
         <div className="px-4 py-3">
@@ -36,4 +36,4 @@ export const AnswerBubble = ({ text, loading }: AnswerBubbleProps) => {
       </div>
     </div>
   );
-};
+});

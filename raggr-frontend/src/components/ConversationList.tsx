@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "../lib/utils";
-import { conversationService } from "../api/conversationService";
 
 type Conversation = {
   title: string;
@@ -23,32 +21,8 @@ export const ConversationList = ({
   selectedId,
   variant = "dark",
 }: ConversationProps) => {
-  const [items, setItems] = useState(conversations);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        let fetched = await conversationService.getAllConversations();
-        if (fetched.length === 0) {
-          await conversationService.createConversation();
-          fetched = await conversationService.getAllConversations();
-        }
-        setItems(fetched.map((c) => ({ id: c.id, title: c.name })));
-      } catch (err) {
-        console.error("Failed to load conversations:", err);
-      }
-    };
-    load();
-  }, []);
-
-  // Keep in sync when parent updates conversations
-  useEffect(() => {
-    setItems(conversations);
-  }, [conversations]);
-
   return (
     <div className="flex flex-col gap-1">
-      {/* New thread button */}
       <button
         onClick={onCreateNewConversation}
         className={cn(
@@ -63,8 +37,7 @@ export const ConversationList = ({
         <span>New thread</span>
       </button>
 
-      {/* Conversation items */}
-      {items.map((conv) => {
+      {conversations.map((conv) => {
         const isActive = conv.id === selectedId;
         return (
           <button

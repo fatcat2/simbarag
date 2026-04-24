@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useState, useRef } from "react";
 import { LogOut, Shield, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
-import { conversationService } from "../api/conversationService";
-import { userService } from "../api/userService";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
 import { ToolBubble } from "./ToolBubble";
@@ -9,205 +7,79 @@ import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
 import { AdminPanel } from "./AdminPanel";
 import { cn } from "../lib/utils";
+import { useConversations } from "../hooks/useConversations";
+import { useChat } from "../hooks/useChat";
 import catIcon from "../assets/cat.png";
-
-type Message = {
-  text: string;
-  speaker: "simba" | "user" | "tool";
-  image_key?: string | null;
-};
-
-type Conversation = {
-  title: string;
-  id: string;
-};
 
 type ChatScreenProps = {
   setAuthenticated: (isAuth: boolean) => void;
+  isAdmin: boolean;
 };
 
-const TOOL_MESSAGES: Record<string, string> = {
-  simba_search: "🔍 Searching Simba's records...",
-  web_search: "🌐 Searching the web...",
-  get_current_date: "📅 Checking today's date...",
-  ynab_budget_summary: "💰 Checking budget summary...",
-  ynab_search_transactions: "💳 Looking up transactions...",
-  ynab_category_spending: "📊 Analyzing category spending...",
-  ynab_insights: "📈 Generating budget insights...",
-  obsidian_search_notes: "📝 Searching notes...",
-  obsidian_read_note: "📖 Reading note...",
-  obsidian_create_note: "✏️ Saving note...",
-  obsidian_create_task: "✅ Creating task...",
-  journal_get_today: "📔 Reading today's journal...",
-  journal_get_tasks: "📋 Getting tasks...",
-  journal_add_task: "➕ Adding task...",
-  journal_complete_task: "✔️ Completing task...",
-};
-
-export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
-  const [query, setQuery] = useState<string>("");
-  const [simbaMode, setSimbaMode] = useState<boolean>(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [showConversations, setShowConversations] = useState<boolean>(false);
-  const [selectedConversation, setSelectedConversation] =
-    useState<Conversation | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [showAdminPanel, setShowAdminPanel] = useState<boolean>(false);
-  const [pendingImage, setPendingImage] = useState<File | null>(null);
+export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
+  const [query, setQuery] = useState("");
+  const [simbaMode, setSimbaMode] = useState(false);
+  const [showConversations, setShowConversations] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isMountedRef = useRef<boolean>(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
+  const isLoadingRef = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({
-        behavior: isLoading ? "instant" : "smooth",
+        behavior: isLoadingRef.current ? "instant" : "smooth",
       });
     });
-  }, [isLoading]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortControllerRef.current?.abort();
-    };
   }, []);
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    setShowConversations(false);
-    setSelectedConversation(conversation);
-    const load = async () => {
-      try {
-        const fetched = await conversationService.getConversation(conversation.id);
-        setMessages(
-          fetched.messages.map((m) => ({ text: m.text, speaker: m.speaker, image_key: m.image_key })),
-        );
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-      }
-    };
-    load();
-  };
+  const {
+    conversations,
+    selectedConversation,
+    selectConversation,
+    createConversation,
+    refreshConversations,
+  } = useConversations();
 
-  const loadConversations = async () => {
-    try {
-      const fetched = await conversationService.getAllConversations();
-      const parsed = fetched.map((c) => ({ id: c.id, title: c.name }));
-      setConversations(parsed);
-    } catch (err) {
-      console.error("Failed to load conversations:", err);
-    }
-  };
+  const onSessionExpired = useCallback(() => setAuthenticated(false), [setAuthenticated]);
 
-  const handleCreateNewConversation = async () => {
-    const newConv = await conversationService.createConversation();
-    await loadConversations();
-    setSelectedConversation({ title: newConv.name, id: newConv.id });
-  };
+  const {
+    messages,
+    setMessages,
+    isLoading,
+    pendingImage,
+    setPendingImage,
+    sendMessage,
+  } = useChat({
+    selectedConversation,
+    createConversation,
+    refreshConversations,
+    onSessionExpired,
+    scrollToBottom,
+  });
 
-  useEffect(() => {
-    loadConversations();
-    userService.getMe().then((me) => setIsAdmin(me.is_admin)).catch(() => {});
-  }, []);
+  // Keep ref in sync for scrollToBottom behavior
+  isLoadingRef.current = isLoading;
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const handleSelectConversation = useCallback(
+    async (conversation: { title: string; id: string }) => {
+      setShowConversations(false);
+      const loaded = await selectConversation(conversation);
+      setMessages(loaded);
+    },
+    [selectConversation, setMessages],
+  );
 
-  const handleQuestionSubmit = useCallback(async () => {
-    if ((!query.trim() && !pendingImage) || isLoading) return;
+  const handleCreateNewConversation = useCallback(async () => {
+    await createConversation();
+    setMessages([]);
+  }, [createConversation, setMessages]);
 
-    let activeConversation = selectedConversation;
-    if (!activeConversation) {
-      const newConv = await conversationService.createConversation();
-      activeConversation = { title: newConv.name, id: newConv.id };
-      setSelectedConversation(activeConversation);
-      setConversations((prev) => [activeConversation!, ...prev]);
-    }
-
-    // Capture pending image before clearing state
-    const imageFile = pendingImage;
-
-    const currMessages = messages.concat([{ text: query, speaker: "user" }]);
-    setMessages(currMessages);
+  const handleQuestionSubmit = useCallback(() => {
+    sendMessage(query, simbaMode);
     setQuery("");
-    setPendingImage(null);
-    setIsLoading(true);
-
-    if (simbaMode) {
-      const randomElement = simbaAnswers[Math.floor(Math.random() * simbaAnswers.length)];
-      setMessages((prev) => prev.concat([{ text: randomElement, speaker: "simba" }]));
-      setIsLoading(false);
-      return;
-    }
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    try {
-      // Upload image first if present
-      let imageKey: string | undefined;
-      if (imageFile) {
-        const uploadResult = await conversationService.uploadImage(
-          imageFile,
-          activeConversation.id,
-        );
-        imageKey = uploadResult.image_key;
-
-        // Update the user message with the image key
-        setMessages((prev) => {
-          const updated = [...prev];
-          // Find the last user message we just added
-          for (let i = updated.length - 1; i >= 0; i--) {
-            if (updated[i].speaker === "user") {
-              updated[i] = { ...updated[i], image_key: imageKey };
-              break;
-            }
-          }
-          return updated;
-        });
-      }
-
-      await conversationService.streamQuery(
-        query,
-        activeConversation.id,
-        (event) => {
-          if (!isMountedRef.current) return;
-          if (event.type === "tool_start") {
-            const friendly = TOOL_MESSAGES[event.tool] ?? `🔧 Using ${event.tool}...`;
-            setMessages((prev) => prev.concat([{ text: friendly, speaker: "tool" }]));
-          } else if (event.type === "response") {
-            setMessages((prev) => prev.concat([{ text: event.message, speaker: "simba" }]));
-          } else if (event.type === "error") {
-            console.error("Stream error:", event.message);
-          }
-        },
-        abortController.signal,
-        imageKey,
-      );
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        console.log("Request was aborted");
-      } else {
-        console.error("Failed to send query:", error);
-        if (error instanceof Error && error.message.includes("Session expired")) {
-          setAuthenticated(false);
-        }
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-        loadConversations();
-      }
-      abortControllerRef.current = null;
-    }
-  }, [query, pendingImage, isLoading, selectedConversation, simbaMode, messages, setAuthenticated]);
+  }, [query, simbaMode, sendMessage]);
 
   const handleQueryChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(event.target.value);
@@ -221,8 +93,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
     }
   }, [handleQuestionSubmit]);
 
-  const handleImageSelect = useCallback((file: File) => setPendingImage(file), []);
-  const handleClearImage = useCallback(() => setPendingImage(null), []);
+  const handleImageSelect = useCallback((file: File) => setPendingImage(file), [setPendingImage]);
+  const handleClearImage = useCallback(() => setPendingImage(null), [setPendingImage]);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -232,7 +104,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
 
   return (
     <div className="h-screen h-[100dvh] flex flex-row bg-cream overflow-hidden">
-      {/* ── Desktop Sidebar ─────────────────────────────── */}
+      {/* Desktop Sidebar */}
       <aside
         className={cn(
           "hidden md:flex md:flex-col",
@@ -241,7 +113,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         )}
       >
         {sidebarCollapsed ? (
-          /* Collapsed state */
           <div className="flex flex-col items-center py-4 gap-4 h-full">
             <button
               onClick={() => setSidebarCollapsed(false)}
@@ -256,9 +127,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             />
           </div>
         ) : (
-          /* Expanded state */
           <div className="flex flex-col h-full">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
               <div className="flex items-center gap-2.5">
                 <img src={catIcon} alt="Simba" className="w-12 h-12" />
@@ -277,7 +146,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               </button>
             </div>
 
-            {/* Conversations */}
             <div className="flex-1 overflow-y-auto px-2 py-3">
               <ConversationList
                 conversations={conversations}
@@ -287,7 +155,6 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
               />
             </div>
 
-            {/* Footer */}
             <div className="px-2 pb-3 pt-2 border-t border-white/8 flex flex-col gap-0.5">
               {isAdmin && (
                 <button
@@ -310,12 +177,9 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         )}
       </aside>
 
-      {/* Admin Panel modal */}
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
 
-      {/* ── Main chat area ──────────────────────────────── */}
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-        {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">
           <div className="flex items-center gap-2">
             <img src={catIcon} alt="Simba" className="w-12 h-12" />
@@ -343,9 +207,7 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
         </header>
 
         {messages.length === 0 ? (
-          /* ── Empty / homepage state ── */
           <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
-            {/* Mobile conversation drawer */}
             {showConversations && (
               <div className="md:hidden w-full max-w-2xl bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                 <ConversationList
@@ -382,11 +244,9 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
             </div>
           </div>
         ) : (
-          /* ── Active chat state ── */
           <>
             <div className="flex-1 overflow-y-auto px-4 py-6">
               <div className="max-w-2xl mx-auto flex flex-col gap-3">
-                {/* Mobile conversation drawer */}
                 {showConversations && (
                   <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                     <ConversationList
@@ -422,8 +282,8 @@ export const ChatScreen = ({ setAuthenticated }: ChatScreenProps) => {
                   setSimbaMode={setSimbaMode}
                   isLoading={isLoading}
                   pendingImage={pendingImage}
-                  onImageSelect={(file) => setPendingImage(file)}
-                  onClearImage={() => setPendingImage(null)}
+                  onImageSelect={handleImageSelect}
+                  onClearImage={handleClearImage}
                 />
               </div>
             </footer>
