@@ -1,7 +1,12 @@
 from quart import Blueprint, jsonify
 from quart_jwt_extended import jwt_refresh_token_required
 
-from .logic import fetch_obsidian_documents, get_vector_store_stats, index_documents, index_obsidian_documents, vector_store
+from .logic import (
+    delete_all_documents,
+    get_vector_store_stats,
+    index_documents,
+    index_obsidian_documents,
+)
 from blueprints.users.decorators import admin_required
 
 rag_blueprint = Blueprint("rag_api", __name__, url_prefix="/api/rag")
@@ -32,14 +37,7 @@ async def trigger_index():
 async def trigger_reindex():
     """Clear and reindex all documents. Admin only."""
     try:
-        # Clear existing documents
-        collection = vector_store._collection
-        all_docs = collection.get()
-
-        if all_docs["ids"]:
-            collection.delete(ids=all_docs["ids"])
-
-        # Reindex
+        delete_all_documents()
         await index_documents()
         stats = get_vector_store_stats()
         return jsonify({"status": "success", "stats": stats})

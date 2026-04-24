@@ -6,19 +6,19 @@ import asyncio
 import sys
 
 from blueprints.rag.logic import (
+    delete_all_documents,
     get_vector_store_stats,
     index_documents,
     list_all_documents,
-    vector_store,
 )
 
 
 def stats():
     """Show vector store statistics."""
-    stats = get_vector_store_stats()
+    s = get_vector_store_stats()
     print("=== Vector Store Statistics ===")
-    print(f"Collection: {stats['collection_name']}")
-    print(f"Total Documents: {stats['total_documents']}")
+    print(f"Collection: {s['collection_name']}")
+    print(f"Total Documents: {s['total_documents']}")
 
 
 async def index():
@@ -26,23 +26,15 @@ async def index():
     print("Starting indexing process...")
     print("Fetching documents from Paperless-NGX...")
     await index_documents()
-    print("✓ Indexing complete!")
+    print("Indexing complete!")
     stats()
 
 
 async def reindex():
     """Clear and reindex all documents."""
     print("Clearing existing documents...")
-    collection = vector_store._collection
-    all_docs = collection.get()
-
-    if all_docs["ids"]:
-        print(f"Deleting {len(all_docs['ids'])} existing documents...")
-        collection.delete(ids=all_docs["ids"])
-        print("✓ Cleared")
-    else:
-        print("Collection is already empty")
-
+    delete_all_documents()
+    print("Cleared")
     await index()
 
 
@@ -113,7 +105,7 @@ Examples:
         print("\n\nOperation cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error: {e}", file=sys.stderr)
+        print(f"\nError: {e}", file=sys.stderr)
         sys.exit(1)
 
 

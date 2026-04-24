@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     ports:
       - "5432:5432"
     environment:
@@ -11,6 +11,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-raggr}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raggr}"]
       interval: 10s
@@ -29,7 +30,6 @@ services:
       - PAPERLESS_TOKEN=${PAPERLESS_TOKEN}
       - BASE_URL=${BASE_URL}
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
-      - CHROMADB_PATH=/app/data/chromadb
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - LLAMA_SERVER_URL=${LLAMA_SERVER_URL}
@@ -66,10 +66,8 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - chromadb_data:/app/data/chromadb
       - ./obvault:/app/data/obsidian
     restart: unless-stopped
 
 volumes:
-  chromadb_data:
   postgres_data:

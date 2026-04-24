@@ -37,15 +37,14 @@ WORKDIR /app/raggr-frontend
 RUN yarn install && yarn build
 WORKDIR /app
 
-# Create ChromaDB and database directories
-RUN mkdir -p /app/chromadb /app/database
+# Create database directory
+RUN mkdir -p /app/database
 
 # Expose port
 EXPOSE 8080
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV CHROMADB_PATH=/app/chromadb
 
 # Run the startup script
 CMD ["./startup.sh"]

@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "Initializing directories..."
-mkdir -p /app/data/chromadb
-
 echo "Rebuilding frontend..."
 cd /app/raggr-frontend
 yarn build
