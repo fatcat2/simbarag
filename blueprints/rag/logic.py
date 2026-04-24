@@ -59,13 +59,17 @@ text_splitter = RecursiveCharacterTextSplitter(
 def _get_collection_id():
     """Get the UUID of our collection from the langchain_pg_collection table."""
     engine = _get_engine()
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT uuid FROM langchain_pg_collection WHERE name = :name"),
-            {"name": "simba_docs"},
-        )
-        row = result.fetchone()
-        return row[0] if row else None
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT uuid FROM langchain_pg_collection WHERE name = :name"),
+                {"name": "simba_docs"},
+            )
+            row = result.fetchone()
+            return row[0] if row else None
+    except Exception:
+        # Table doesn't exist yet (first run before any indexing)
+        return None
 
 
 def date_to_epoch(date_str: str) -> float:
