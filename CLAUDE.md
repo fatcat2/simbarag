@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SimbaRAG is a RAG (Retrieval-Augmented Generation) conversational AI system for querying information about Simba (a cat). It ingests documents from Paperless-NGX, stores embeddings in ChromaDB, and uses LLMs (Ollama or OpenAI) to answer questions.
+SimbaRAG is a RAG (Retrieval-Augmented Generation) conversational AI system for querying information about Simba (a cat). It ingests documents from Paperless-NGX, stores embeddings in PostgreSQL via pgvector, and uses LLMs (Ollama or OpenAI) to answer questions.
 
 ## Commands
 
@@ -54,9 +54,8 @@ docker compose up -d
 │                     Docker Compose                          │
 ├─────────────────────────────────────────────────────────────┤
 │  raggr (port 8080)              │  postgres (port 5432)    │
-│  ├── Quart backend              │  PostgreSQL 16           │
-│  ├── React frontend (served)    │                          │
-│  └── ChromaDB (volume)          │                          │
+│  ├── Quart backend              │  PostgreSQL 16 + pgvector│
+│  └── React frontend (served)    │                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 

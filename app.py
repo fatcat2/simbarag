@@ -3,7 +3,7 @@ import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
-from quart import Quart, jsonify, render_template, request, send_from_directory
+from quart import Quart, jsonify, render_template, send_from_directory
 from quart_jwt_extended import JWTManager, get_jwt_identity, jwt_refresh_token_required
 from tortoise import Tortoise
 
@@ -15,7 +15,6 @@ import blueprints.users
 import blueprints.whatsapp
 import blueprints.users.models
 from config.db import TORTOISE_CONFIG
-from main import consult_simba_oracle
 
 # Load environment variables
 load_dotenv()
@@ -76,39 +75,6 @@ async def serve_react_app(path):
     if path and os.path.exists(os.path.join(app.template_folder, path)):
         return await send_from_directory(app.template_folder, path)
     return await render_template("index.html")
-
-
-@app.route("/api/query", methods=["POST"])
-@jwt_refresh_token_required
-async def query():
-    current_user_uuid = get_jwt_identity()
-    user = await blueprints.users.models.User.get(id=current_user_uuid)
-    data = await request.get_json()
-    query = data.get("query")
-    conversation_id = data.get("conversation_id")
-    conversation = await blueprints.conversation.logic.get_conversation_by_id(
-        conversation_id
-    )
-    await conversation.fetch_related("messages")
-    await blueprints.conversation.logic.add_message_to_conversation(
-        conversation=conversation,
-        message=query,
-        speaker="user",
-        user=user,
-    )
-
-    transcript = await blueprints.conversation.logic.get_conversation_transcript(
-        user=user, conversation=conversation
-    )
-
-    response = consult_simba_oracle(input=query, transcript=transcript)
-    await blueprints.conversation.logic.add_message_to_conversation(
-        conversation=conversation,
-        message=response,
-        speaker="simba",
-        user=user,
-    )
-    return jsonify({"response": response})
 
 
 @app.route("/api/messages", methods=["GET"])

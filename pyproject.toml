@@ -5,7 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "chromadb>=1.1.0",
+    "langchain-postgres>=0.0.13",
+    "psycopg[binary]>=3.1.0",
     "python-dotenv>=1.0.0",
     "flask>=3.1.2",
     "httpx>=0.28.1",
@@ -30,7 +31,6 @@ dependencies = [
     "asyncpg>=0.30.0",
     "langchain-openai>=1.1.6",
     "langchain>=1.2.0",
-    "langchain-chroma>=1.0.0",
     "langchain-community>=0.4.1",
     "jq>=1.10.0",
     "tavily-python>=0.7.17",

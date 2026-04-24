@@ -328,7 +328,7 @@ async def obsidian_search_notes(query: str) -> str:
         return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
 
     try:
-        # Query ChromaDB for obsidian documents
+        # Query vector store for obsidian documents
         serialized, docs = await query_vector_store(query=query)
         return serialized
 
