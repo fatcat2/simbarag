@@ -1,6 +1,7 @@
+import React from "react";
 import { cn } from "../lib/utils";
 
-export const ToolBubble = ({ text }: { text: string }) => (
+export const ToolBubble = React.memo(({ text }: { text: string }) => (
   <div className="flex justify-center message-enter">
     <div
       className={cn(
@@ -12,4 +13,4 @@ export const ToolBubble = ({ text }: { text: string }) => (
       {text}
     </div>
   </div>
-);
+));

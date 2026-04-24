@@ -1,26 +1,14 @@
-import { useEffect, useState } from "react";
+import React from "react";
 import { cn } from "../lib/utils";
-import { conversationService } from "../api/conversationService";
+import { usePresignedUrl } from "../hooks/usePresignedUrl";
 
 type QuestionBubbleProps = {
   text: string;
   image_key?: string | null;
 };
 
-export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    if (!image_key) return;
-    conversationService
-      .getPresignedImageUrl(image_key)
-      .then(setImageUrl)
-      .catch((err) => {
-        console.error("Failed to load image:", err);
-        setImageError(true);
-      });
-  }, [image_key]);
+export const QuestionBubble = React.memo(({ text, image_key }: QuestionBubbleProps) => {
+  const { imageUrl, imageError } = usePresignedUrl(image_key);
 
   return (
     <div className="flex justify-end message-enter">
@@ -34,7 +22,6 @@ export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
       >
         {imageError && (
           <div className="flex items-center gap-2 text-xs text-charcoal/50 bg-charcoal/5 rounded-xl px-3 py-2 mb-2">
-            <span>🖼️</span>
             <span>Image failed to load</span>
           </div>
         )}
@@ -49,4 +36,4 @@ export const QuestionBubble = ({ text, image_key }: QuestionBubbleProps) => {
       </div>
     </div>
   );
-};
+});

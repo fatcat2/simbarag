@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X, Phone, PhoneOff, Pencil, Check, Mail, Copy } from "lucide-react";
 import { userService, type AdminUserRecord } from "../api/userService";
 import { cn } from "../lib/utils";
@@ -12,26 +12,18 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
+import { useAdminUsers } from "../hooks/useAdminUsers";
 
 type Props = {
   onClose: () => void;
 };
 
 export const AdminPanel = ({ onClose }: Props) => {
-  const [users, setUsers] = useState<AdminUserRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { users, loading, updateUser } = useAdminUsers();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [rowSuccess, setRowSuccess] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    userService
-      .adminListUsers()
-      .then(setUsers)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const startEdit = (user: AdminUserRecord) => {
     setEditingId(user.id);
@@ -49,8 +41,8 @@ export const AdminPanel = ({ onClose }: Props) => {
     setRowError((p) => ({ ...p, [userId]: "" }));
     try {
       const updated = await userService.adminSetWhatsapp(userId, editValue);
-      setUsers((p) => p.map((u) => (u.id === userId ? updated : u)));
-      setRowSuccess((p) => ({ ...p, [userId]: "Saved ✓" }));
+      updateUser(userId, () => updated);
+      setRowSuccess((p) => ({ ...p, [userId]: "Saved" }));
       setEditingId(null);
       setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
     } catch (err) {
@@ -65,10 +57,8 @@ export const AdminPanel = ({ onClose }: Props) => {
     setRowError((p) => ({ ...p, [userId]: "" }));
     try {
       await userService.adminUnlinkWhatsapp(userId);
-      setUsers((p) =>
-        p.map((u) => (u.id === userId ? { ...u, whatsapp_number: null } : u)),
-      );
-      setRowSuccess((p) => ({ ...p, [userId]: "Unlinked ✓" }));
+      updateUser(userId, (u) => ({ ...u, whatsapp_number: null }));
+      setRowSuccess((p) => ({ ...p, [userId]: "Unlinked" }));
       setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
     } catch (err) {
       setRowError((p) => ({
@@ -82,8 +72,8 @@ export const AdminPanel = ({ onClose }: Props) => {
     setRowError((p) => ({ ...p, [userId]: "" }));
     try {
       const updated = await userService.adminToggleEmail(userId);
-      setUsers((p) => p.map((u) => (u.id === userId ? updated : u)));
-      setRowSuccess((p) => ({ ...p, [userId]: "Email enabled ✓" }));
+      updateUser(userId, () => updated);
+      setRowSuccess((p) => ({ ...p, [userId]: "Email enabled" }));
       setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
     } catch (err) {
       setRowError((p) => ({
@@ -97,10 +87,8 @@ export const AdminPanel = ({ onClose }: Props) => {
     setRowError((p) => ({ ...p, [userId]: "" }));
     try {
       await userService.adminDisableEmail(userId);
-      setUsers((p) =>
-        p.map((u) => (u.id === userId ? { ...u, email_enabled: false, email_address: null } : u)),
-      );
-      setRowSuccess((p) => ({ ...p, [userId]: "Email disabled ✓" }));
+      updateUser(userId, (u) => ({ ...u, email_enabled: false, email_address: null }));
+      setRowSuccess((p) => ({ ...p, [userId]: "Email disabled" }));
       setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
     } catch (err) {
       setRowError((p) => ({
@@ -112,7 +100,7 @@ export const AdminPanel = ({ onClose }: Props) => {
 
   const copyToClipboard = (text: string, userId: string) => {
     navigator.clipboard.writeText(text);
-    setRowSuccess((p) => ({ ...p, [userId]: "Copied ✓" }));
+    setRowSuccess((p) => ({ ...p, [userId]: "Copied" }));
     setTimeout(() => setRowSuccess((p) => ({ ...p, [userId]: "" })), 2000);
   };
 
@@ -128,7 +116,6 @@ export const AdminPanel = ({ onClose }: Props) => {
           "border border-sand-light/60",
         )}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-sand-light/60">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-leaf-pale flex items-center justify-center">
@@ -146,7 +133,6 @@ export const AdminPanel = ({ onClose }: Props) => {
           </button>
         </div>
 
-        {/* Body */}
         <div className="overflow-y-auto flex-1 rounded-b-3xl">
           {loading ? (
             <div className="px-6 py-12 text-center text-warm-gray text-sm">
@@ -155,7 +141,7 @@ export const AdminPanel = ({ onClose }: Props) => {
                 <span className="loading-dot w-2 h-2 rounded-full bg-amber-soft inline-block" />
                 <span className="loading-dot w-2 h-2 rounded-full bg-amber-soft inline-block" />
               </div>
-              Loading users…
+              Loading users...
             </div>
           ) : (
             <Table>
@@ -204,7 +190,7 @@ export const AdminPanel = ({ onClose }: Props) => {
                                 : "text-warm-gray/40 italic",
                             )}
                           >
-                            {user.whatsapp_number ?? "—"}
+                            {user.whatsapp_number ?? "\u2014"}
                           </span>
                           {rowSuccess[user.id] && (
                             <span className="text-xs text-leaf-dark">
@@ -235,7 +221,7 @@ export const AdminPanel = ({ onClose }: Props) => {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-sm text-warm-gray/40 italic">—</span>
+                          <span className="text-sm text-warm-gray/40 italic">\u2014</span>
                         )}
                       </div>
                     </TableCell>
