@@ -118,6 +118,10 @@ def _sanitize_text(text_content: str) -> str:
     """Strip non-printable and invalid characters that break embedding tokenizers."""
     # Remove null bytes and control characters (keep newlines and tabs)
     text_content = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text_content)
+    # Remove Unicode surrogates and other problematic Unicode
+    text_content = re.sub(r"[\ud800-\udfff\ufffe\uffff]", "", text_content)
+    # Remove replacement character clusters
+    text_content = text_content.replace("\ufffd", "")
     # Collapse excessive whitespace
     text_content = re.sub(r" {3,}", "  ", text_content)
     return text_content.strip()
@@ -136,8 +140,17 @@ async def index_documents():
 
     splits = text_splitter.split_documents(documents)
     splits = _sanitize_documents(splits)
+    logger.info(f"Indexing {len(splits)} chunks from {len(documents)} documents")
     vector_store = _get_vector_store()
-    await vector_store.aadd_documents(documents=splits)
+    for i, split in enumerate(splits):
+        try:
+            await vector_store.aadd_documents(documents=[split])
+        except Exception as e:
+            logger.error(
+                f"Failed to embed chunk {i} from {split.metadata.get('filename', 'unknown')}: {e}"
+            )
+            logger.debug(f"Chunk content preview: {split.page_content[:200]!r}")
+            raise
 
 
 async def fetch_obsidian_documents() -> list[Document]:
