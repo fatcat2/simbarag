@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import re
 
 from dotenv import load_dotenv
 from langchain_core.documents import Document
@@ -113,11 +114,28 @@ async def fetch_documents_from_paperless_ngx() -> list[Document]:
     return documents
 
 
+def _sanitize_text(text_content: str) -> str:
+    """Strip non-printable and invalid characters that break embedding tokenizers."""
+    # Remove null bytes and control characters (keep newlines and tabs)
+    text_content = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text_content)
+    # Collapse excessive whitespace
+    text_content = re.sub(r" {3,}", "  ", text_content)
+    return text_content.strip()
+
+
+def _sanitize_documents(documents: list[Document]) -> list[Document]:
+    """Sanitize page_content of all documents for embedding compatibility."""
+    for doc in documents:
+        doc.page_content = _sanitize_text(doc.page_content)
+    return [doc for doc in documents if doc.page_content]
+
+
 async def index_documents():
     """Index Paperless-NGX documents into vector store."""
     documents = await fetch_documents_from_paperless_ngx()
 
     splits = text_splitter.split_documents(documents)
+    splits = _sanitize_documents(splits)
     vector_store = _get_vector_store()
     await vector_store.aadd_documents(documents=splits)
 
@@ -178,8 +196,9 @@ async def index_obsidian_documents():
     # Delete existing obsidian chunks
     delete_documents_by_metadata("source", "obsidian")
 
-    # Split and index documents
+    # Split, sanitize, and index documents
     splits = text_splitter.split_documents(documents)
+    splits = _sanitize_documents(splits)
     vector_store = _get_vector_store()
     await vector_store.aadd_documents(documents=splits)
 
