@@ -17,7 +17,17 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+_embedding_server_url = os.getenv("EMBEDDING_SERVER_URL")
+_embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-3-small")
+
+if _embedding_server_url:
+    embeddings = OpenAIEmbeddings(
+        model=_embedding_model,
+        base_url=_embedding_server_url,
+        api_key="not-needed",
+    )
+else:
+    embeddings = OpenAIEmbeddings(model=_embedding_model)
 
 # Convert Tortoise-style postgres:// URL to SQLAlchemy-style postgresql+psycopg://
 _db_url = os.getenv(
