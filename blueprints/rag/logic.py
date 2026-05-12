@@ -26,6 +26,7 @@ if _embedding_server_url:
         model=_embedding_model,
         base_url=_embedding_server_url,
         api_key="not-needed",
+        check_embedding_ctx_length=False,
     )
 else:
     embeddings = OpenAIEmbeddings(model=_embedding_model)
