@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import re
+import time
 
 from dotenv import load_dotenv
 from langchain_core.documents import Document
@@ -180,6 +181,7 @@ async def fetch_obsidian_documents() -> list[Document]:
                     "filepath": parsed["filepath"],
                     "tags": parsed["tags"],
                     "created_at": parsed["metadata"].get("created_at"),
+                    "indexed_at": time.time(),
                     **{
                         k: v
                         for k, v in parsed["metadata"].items()
@@ -217,6 +219,106 @@ async def index_obsidian_documents():
     await vector_store.aadd_documents(documents=splits)
 
     return {"indexed": len(documents)}
+
+
+def _get_obsidian_indexed_files() -> dict[str, float]:
+    """Return {filepath: indexed_at} for all obsidian chunks in pgvector."""
+    collection_id = _get_collection_id()
+    if not collection_id:
+        return {}
+    engine = _get_engine()
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(
+                "SELECT DISTINCT cmetadata->>'filepath' AS filepath, "
+                "MAX((cmetadata->>'indexed_at')::float) AS indexed_at "
+                "FROM langchain_pg_embedding "
+                "WHERE collection_id = :cid AND cmetadata->>'source' = 'obsidian' "
+                "GROUP BY cmetadata->>'filepath'"
+            ),
+            {"cid": collection_id},
+        )
+        return {row[0]: row[1] for row in result if row[0] is not None}
+
+
+async def sync_obsidian_documents() -> dict[str, int]:
+    """Incrementally sync Obsidian documents to pgvector.
+
+    Compares file mtimes against stored indexed_at timestamps to only
+    re-index changed/new files and remove deleted ones.
+
+    Returns:
+        Dict with counts of added, updated, and deleted files.
+    """
+    obsidian_service = ObsidianService()
+    indexed_files = _get_obsidian_indexed_files()
+
+    # Build map of current vault files -> mtime
+    vault_files: dict[str, float] = {}
+    for md_path in obsidian_service.walk_vault():
+        vault_files[str(md_path)] = md_path.stat().st_mtime
+
+    added = 0
+    updated = 0
+    deleted = 0
+
+    # Find files to add or update
+    files_to_index: list[str] = []
+    for filepath, mtime in vault_files.items():
+        indexed_at = indexed_files.get(filepath)
+        if indexed_at is None:
+            files_to_index.append(filepath)
+            added += 1
+        elif mtime > indexed_at:
+            # Delete old chunks first
+            delete_documents_by_metadata("filepath", filepath)
+            files_to_index.append(filepath)
+            updated += 1
+
+    # Find deleted files (in DB but not on disk)
+    for filepath in indexed_files:
+        if filepath not in vault_files:
+            delete_documents_by_metadata("filepath", filepath)
+            deleted += 1
+
+    # Index new/changed files
+    if files_to_index:
+        documents = []
+        for filepath in files_to_index:
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                parsed = obsidian_service.parse_markdown(content, filepath)
+                document = Document(
+                    page_content=parsed["content"],
+                    metadata={
+                        "source": "obsidian",
+                        "filepath": parsed["filepath"],
+                        "tags": parsed["tags"],
+                        "created_at": parsed["metadata"].get("created_at"),
+                        "indexed_at": time.time(),
+                        **{
+                            k: v
+                            for k, v in parsed["metadata"].items()
+                            if k not in ["created_at", "created_by"]
+                        },
+                    },
+                )
+                documents.append(document)
+            except Exception as e:
+                logger.warning(f"Error reading {filepath}: {e}")
+                continue
+
+        if documents:
+            splits = text_splitter.split_documents(documents)
+            splits = _sanitize_documents(splits)
+            vector_store = _get_vector_store()
+            await vector_store.aadd_documents(documents=splits)
+
+    logger.info(
+        f"Obsidian sync complete: {added} added, {updated} updated, {deleted} deleted"
+    )
+    return {"added": added, "updated": updated, "deleted": deleted}
 
 
 async def query_vector_store(query: str):

@@ -5,7 +5,7 @@ from .logic import (
     delete_all_documents,
     get_vector_store_stats,
     index_documents,
-    index_obsidian_documents,
+    sync_obsidian_documents,
 )
 from blueprints.users.decorators import admin_required
 
@@ -48,9 +48,9 @@ async def trigger_reindex():
 @rag_blueprint.post("/index-obsidian")
 @admin_required
 async def trigger_obsidian_index():
-    """Index all Obsidian markdown documents into vector store. Admin only."""
+    """Incrementally sync Obsidian documents into vector store. Admin only."""
     try:
-        result = await index_obsidian_documents()
+        result = await sync_obsidian_documents()
         stats = get_vector_store_stats()
         return jsonify({"status": "success", "result": result, "stats": stats})
     except Exception as e:

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from datetime import timedelta
@@ -51,13 +52,43 @@ app.register_blueprint(blueprints.rag.rag_blueprint)
 app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
 
 
+async def _obsidian_sync_loop():
+    """Background task that incrementally syncs Obsidian documents to pgvector."""
+    from blueprints.rag.logic import sync_obsidian_documents
+
+    interval = int(os.getenv("OBSIDIAN_SYNC_INTERVAL", "60"))
+    logger = logging.getLogger("obsidian_sync")
+    logger.info(f"Obsidian sync watcher started (interval={interval}s)")
+
+    while True:
+        try:
+            result = await sync_obsidian_documents()
+            if result["added"] or result["updated"] or result["deleted"]:
+                logger.info(
+                    f"Obsidian sync: {result['added']} added, "
+                    f"{result['updated']} updated, {result['deleted']} deleted"
+                )
+        except Exception:
+            logger.exception("Obsidian sync error")
+        await asyncio.sleep(interval)
+
+
 # Initialize Tortoise ORM with lifecycle hooks
 @app.while_serving
 async def lifespan():
     logging.info("Initializing Tortoise ORM...")
     await Tortoise.init(config=TORTOISE_CONFIG)
     logging.info("Tortoise ORM initialized successfully")
+
+    watcher_task = None
+    if os.getenv("OBSIDIAN_CONTINUOUS_SYNC") == "true":
+        watcher_task = asyncio.create_task(_obsidian_sync_loop())
+
     yield
+
+    if watcher_task is not None:
+        watcher_task.cancel()
+
     logging.info("Closing Tortoise ORM connections...")
     await Tortoise.close_connections()
 
