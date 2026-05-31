@@ -116,6 +116,17 @@ async def fetch_documents_from_paperless_ngx() -> list[Document]:
     return documents
 
 
+def _make_serializable(value):
+    """Convert a value to a JSON-serializable type."""
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_make_serializable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _make_serializable(v) for k, v in value.items()}
+    return str(value)
+
+
 def _sanitize_text(text_content: str) -> str:
     """Strip non-printable and invalid characters that break embedding tokenizers."""
     # Remove null bytes and control characters (keep newlines and tabs)
@@ -174,20 +185,21 @@ async def fetch_obsidian_documents() -> list[Document]:
             parsed = obsidian_service.parse_markdown(content, md_path)
 
             # Create LangChain Document with obsidian source
+            metadata = {
+                "source": "obsidian",
+                "filepath": parsed["filepath"],
+                "tags": parsed["tags"],
+                "created_at": parsed["metadata"].get("created_at"),
+                "indexed_at": time.time(),
+                **{
+                    k: v
+                    for k, v in parsed["metadata"].items()
+                    if k not in ["created_at", "created_by"]
+                },
+            }
             document = Document(
                 page_content=parsed["content"],
-                metadata={
-                    "source": "obsidian",
-                    "filepath": parsed["filepath"],
-                    "tags": parsed["tags"],
-                    "created_at": parsed["metadata"].get("created_at"),
-                    "indexed_at": time.time(),
-                    **{
-                        k: v
-                        for k, v in parsed["metadata"].items()
-                        if k not in ["created_at", "created_by"]
-                    },
-                },
+                metadata=_make_serializable(metadata),
             )
             documents.append(document)
 
@@ -289,20 +301,21 @@ async def sync_obsidian_documents() -> dict[str, int]:
                 with open(filepath, "r", encoding="utf-8") as f:
                     content = f.read()
                 parsed = obsidian_service.parse_markdown(content, filepath)
+                metadata = {
+                    "source": "obsidian",
+                    "filepath": parsed["filepath"],
+                    "tags": parsed["tags"],
+                    "created_at": parsed["metadata"].get("created_at"),
+                    "indexed_at": time.time(),
+                    **{
+                        k: v
+                        for k, v in parsed["metadata"].items()
+                        if k not in ["created_at", "created_by"]
+                    },
+                }
                 document = Document(
                     page_content=parsed["content"],
-                    metadata={
-                        "source": "obsidian",
-                        "filepath": parsed["filepath"],
-                        "tags": parsed["tags"],
-                        "created_at": parsed["metadata"].get("created_at"),
-                        "indexed_at": time.time(),
-                        **{
-                            k: v
-                            for k, v in parsed["metadata"].items()
-                            if k not in ["created_at", "created_by"]
-                        },
-                    },
+                    metadata=_make_serializable(metadata),
                 )
                 documents.append(document)
             except Exception as e:
