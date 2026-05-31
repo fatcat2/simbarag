@@ -61,7 +61,9 @@ class ObsidianService:
 
         return md_files
 
-    def parse_markdown(self, content: str, filepath: Optional[Path] = None) -> dict[str, Any]:
+    def parse_markdown(
+        self, content: str, filepath: Optional[Path] = None
+    ) -> dict[str, Any]:
         """Parse Obsidian markdown to extract metadata and clean content.
 
         Args:
@@ -85,7 +87,7 @@ class ObsidianService:
 
         if match:
             frontmatter = match.group(1)
-            body_content = content[match.end():].strip()
+            body_content = content[match.end() :].strip()
             try:
                 metadata = yaml.safe_load(frontmatter) or {}
             except yaml.YAMLError:
@@ -187,7 +189,9 @@ class ObsidianService:
             default_frontmatter.setdefault("tags", []).extend(tags)
 
         # Write note
-        frontmatter_yaml = yaml.dump(default_frontmatter, allow_unicode=True, default_flow_style=False)
+        frontmatter_yaml = yaml.dump(
+            default_frontmatter, allow_unicode=True, default_flow_style=False
+        )
         full_content = f"---\n{frontmatter_yaml}---\n\n{content}"
 
         with open(note_path, "w", encoding="utf-8") as f:
@@ -247,7 +251,7 @@ class ObsidianService:
         """
         if date is None:
             date = datetime.now()
-        return f"journal/{date.strftime('%Y')}/{date.strftime('%Y-%m-%d')}.md"
+        return f"50 - Journal/{date.strftime('%Y')}/{date.strftime('%m')}/{date.strftime('%Y-%m-%d')}.md"
 
     def get_daily_note(self, date: Optional[datetime] = None) -> dict[str, Any]:
         """Read a daily note from the vault.
@@ -264,12 +268,22 @@ class ObsidianService:
         note_path = Path(self.vault_path) / relative_path
 
         if not note_path.exists():
-            return {"found": False, "path": relative_path, "content": None, "date": date.strftime("%Y-%m-%d")}
+            return {
+                "found": False,
+                "path": relative_path,
+                "content": None,
+                "date": date.strftime("%Y-%m-%d"),
+            }
 
         with open(note_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        return {"found": True, "path": relative_path, "content": content, "date": date.strftime("%Y-%m-%d")}
+        return {
+            "found": True,
+            "path": relative_path,
+            "content": content,
+            "date": date.strftime("%Y-%m-%d"),
+        }
 
     def get_daily_tasks(self, date: Optional[datetime] = None) -> dict[str, Any]:
         """Extract tasks from a daily note's tasks section.
@@ -284,7 +298,12 @@ class ObsidianService:
             date = datetime.now()
         note = self.get_daily_note(date)
         if not note["found"]:
-            return {"found": False, "tasks": [], "date": note["date"], "path": note["path"]}
+            return {
+                "found": False,
+                "tasks": [],
+                "date": note["date"],
+                "path": note["path"],
+            }
 
         tasks = []
         in_tasks = False
@@ -302,9 +321,16 @@ class ObsidianService:
                 elif todo_match:
                     tasks.append({"text": todo_match.group(1), "done": False})
 
-        return {"found": True, "tasks": tasks, "date": note["date"], "path": note["path"]}
+        return {
+            "found": True,
+            "tasks": tasks,
+            "date": note["date"],
+            "path": note["path"],
+        }
 
-    def add_task_to_daily_note(self, task_text: str, date: Optional[datetime] = None) -> dict[str, Any]:
+    def add_task_to_daily_note(
+        self, task_text: str, date: Optional[datetime] = None
+    ) -> dict[str, Any]:
         """Add a task checkbox to a daily note, creating the note if needed.
 
         Args:
@@ -336,7 +362,9 @@ class ObsidianService:
         log_match = re.search(r"\n(### log)", content, re.IGNORECASE)
         if log_match:
             insert_pos = log_match.start()
-            content = content[:insert_pos] + f"\n- [ ] {task_text}" + content[insert_pos:]
+            content = (
+                content[:insert_pos] + f"\n- [ ] {task_text}" + content[insert_pos:]
+            )
         else:
             content = content.rstrip() + f"\n- [ ] {task_text}\n"
 
@@ -345,7 +373,9 @@ class ObsidianService:
 
         return {"success": True, "created_note": False, "path": relative_path}
 
-    def complete_task_in_daily_note(self, task_text: str, date: Optional[datetime] = None) -> dict[str, Any]:
+    def complete_task_in_daily_note(
+        self, task_text: str, date: Optional[datetime] = None
+    ) -> dict[str, Any]:
         """Mark a task as complete in a daily note by matching task text.
 
         Searches for a task matching the given text (exact or partial) and
@@ -374,9 +404,15 @@ class ObsidianService:
         if exact in content:
             content = content.replace(exact, f"- [x] {task_text}", 1)
         else:
-            match = re.search(r"- \[ \] .*" + re.escape(task_text) + r".*", content, re.IGNORECASE)
+            match = re.search(
+                r"- \[ \] .*" + re.escape(task_text) + r".*", content, re.IGNORECASE
+            )
             if not match:
-                return {"success": False, "error": f"Task '{task_text}' not found", "path": relative_path}
+                return {
+                    "success": False,
+                    "error": f"Task '{task_text}' not found",
+                    "path": relative_path,
+                }
             completed = match.group(0).replace("- [ ]", "- [x]", 1)
             content = content.replace(match.group(0), completed, 1)
             task_text = match.group(0).replace("- [ ] ", "")

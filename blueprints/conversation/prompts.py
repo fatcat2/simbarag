@@ -49,7 +49,7 @@ You have access to Ryan's Obsidian vault through the Obsidian integration. When 
 Always use these tools when users ask about notes, research, ideas, tasks, or when you want to save information for future reference.
 
 DAILY JOURNAL (Task Tracking):
-You have access to Ryan's daily journal notes. Each note lives at journal/YYYY/YYYY-MM-DD.md and has two sections: tasks and log.
+You have access to Ryan's daily journal notes. Each note lives at 50 - Journal/YYYY/MM/YYYY-MM-DD.md and has two sections: tasks and log.
 - Use journal_get_today to read today's full daily note (tasks + log)
 - Use journal_get_tasks to list tasks (done/pending) for today or a specific date
 - Use journal_add_task to add a new task to today's (or a given date's) note

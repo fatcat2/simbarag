@@ -93,13 +93,15 @@ class TestGetDailyNotePath:
     def test_formats_path_correctly(self, service):
         date = datetime(2026, 3, 15)
         path = service.get_daily_note_path(date)
-        assert path == "journal/2026/2026-03-15.md"
+        assert path == "50 - Journal/2026/03/2026-03-15.md"
 
     def test_defaults_to_today(self, service):
         path = service.get_daily_note_path()
         today = datetime.now()
         assert today.strftime("%Y-%m-%d") in path
-        assert path.startswith(f"journal/{today.strftime('%Y')}/")
+        assert path.startswith(
+            f"50 - Journal/{today.strftime('%Y')}/{today.strftime('%m')}/"
+        )
 
 
 class TestWalkVault:
