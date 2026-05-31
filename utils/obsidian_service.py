@@ -106,8 +106,12 @@ class ObsidianService:
         embeds = [e.split(":")[0].strip() if ":" in e else e.strip() for e in embeds]
 
         # Clean body content
-        # Remove wikilinks [[...]] and embeds [[!...]]
-        cleaned_content = re.sub(r"\[\[.*?\]\]", "", body_content)
+        # Remove embeds ![[...]]
+        cleaned_content = re.sub(r"!\[\[.*?\]\]", "", body_content)
+        # Convert wikilinks to display text: [[target|display]] → display, [[target]] → target
+        cleaned_content = re.sub(
+            r"\[\[([^\]|]+\|)?([^\]]+)\]\]", r"\2", cleaned_content
+        )
         cleaned_content = re.sub(r"\n{3,}", "\n\n", cleaned_content).strip()
 
         return {

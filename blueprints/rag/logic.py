@@ -10,6 +10,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy import create_engine, text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from .fetchers import PaperlessNGXService
 from utils.obsidian_service import ObsidianService
@@ -61,6 +62,13 @@ def _get_engine():
     if not hasattr(_get_engine, "_engine"):
         _get_engine._engine = create_engine(_pgvector_url)
     return _get_engine._engine
+
+
+def _get_async_engine():
+    """Get an async SQLAlchemy engine for direct queries."""
+    if not hasattr(_get_async_engine, "_engine"):
+        _get_async_engine._engine = create_async_engine(_pgvector_url)
+    return _get_async_engine._engine
 
 
 text_splitter = RecursiveCharacterTextSplitter(
@@ -233,14 +241,14 @@ async def index_obsidian_documents():
     return {"indexed": len(documents)}
 
 
-def _get_obsidian_indexed_files() -> dict[str, float]:
+async def _get_obsidian_indexed_files() -> dict[str, float]:
     """Return {filepath: indexed_at} for all obsidian chunks in pgvector."""
     collection_id = _get_collection_id()
     if not collection_id:
         return {}
-    engine = _get_engine()
-    with engine.connect() as conn:
-        result = conn.execute(
+    engine = _get_async_engine()
+    async with engine.connect() as conn:
+        result = await conn.execute(
             text(
                 "SELECT DISTINCT cmetadata->>'filepath' AS filepath, "
                 "MAX((cmetadata->>'indexed_at')::float) AS indexed_at "
@@ -263,7 +271,7 @@ async def sync_obsidian_documents() -> dict[str, int]:
         Dict with counts of added, updated, and deleted files.
     """
     obsidian_service = ObsidianService()
-    indexed_files = _get_obsidian_indexed_files()
+    indexed_files = await _get_obsidian_indexed_files()
 
     # Build map of current vault files -> mtime
     vault_files: dict[str, float] = {}
