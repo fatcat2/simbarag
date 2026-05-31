@@ -22,6 +22,8 @@ if [ "${OBSIDIAN_CONTINUOUS_SYNC}" = "true" ]; then
                --path "${VAULT_PATH}" \
                --password "${OBSIDIAN_E2E_PASSWORD}" \
                --device-name "${OBSIDIAN_DEVICE_NAME:-simbarag}"; then
+            # Remove stale lock from previous container run
+            rm -rf "${VAULT_PATH}/.obsidian/.sync.lock"
             # Start continuous sync in background
             echo "Starting Obsidian continuous sync..."
             ob sync --continuous --path "${VAULT_PATH}" &
