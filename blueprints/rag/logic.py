@@ -325,8 +325,9 @@ async def sync_obsidian_documents() -> dict[str, int]:
         if documents:
             splits = text_splitter.split_documents(documents)
             splits = _sanitize_documents(splits)
-            vector_store = _get_vector_store()
-            await vector_store.aadd_documents(documents=splits)
+            if splits:
+                vector_store = _get_vector_store()
+                await vector_store.aadd_documents(documents=splits)
 
     logger.info(
         f"Obsidian sync complete: {added} added, {updated} updated, {deleted} deleted"
@@ -336,7 +337,7 @@ async def sync_obsidian_documents() -> dict[str, int]:
 
 async def query_vector_store(query: str):
     vector_store = _get_vector_store()
-    retrieved_docs = await vector_store.asimilarity_search(query, k=2)
+    retrieved_docs = await vector_store.asimilarity_search(query, k=6)
     serialized = "\n\n".join(
         (f"Source: {doc.metadata}\nContent: {doc.page_content}")
         for doc in retrieved_docs
