@@ -12,19 +12,17 @@ if [ "${OBSIDIAN_CONTINUOUS_SYNC}" = "true" ]; then
 
     VAULT_PATH="${OBSIDIAN_VAULT_PATH:-/app/data/obsidian}"
 
-    # Login
-    ob login --email "${OBSIDIAN_EMAIL}" --password "${OBSIDIAN_PASSWORD}" && \
-    # Setup sync for vault
-    ob sync-setup \
-        --vault "${OBSIDIAN_VAULT_ID}" \
-        --path "${VAULT_PATH}" \
-        --password "${OBSIDIAN_E2E_PASSWORD}" \
-        --device-name "${OBSIDIAN_DEVICE_NAME:-simbarag}" && \
-    # Start continuous sync in background
-    echo "Starting Obsidian continuous sync..." && \
-    ob sync --continuous --path "${VAULT_PATH}" &
-
-    if [ $? -ne 0 ]; then
+    # Login and setup sync (foreground, must complete before sync starts)
+    if ob login --email "${OBSIDIAN_EMAIL}" --password "${OBSIDIAN_PASSWORD}" && \
+       ob sync-setup \
+           --vault "${OBSIDIAN_VAULT_ID}" \
+           --path "${VAULT_PATH}" \
+           --password "${OBSIDIAN_E2E_PASSWORD}" \
+           --device-name "${OBSIDIAN_DEVICE_NAME:-simbarag}"; then
+        # Start continuous sync in background
+        echo "Starting Obsidian continuous sync..."
+        ob sync --continuous --path "${VAULT_PATH}" &
+    else
         echo "WARNING: Obsidian sync setup failed. Continuing without sync."
     fi
 fi

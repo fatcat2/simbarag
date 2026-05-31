@@ -68,12 +68,39 @@ async def static_files(filename):
     return await send_from_directory(app.static_folder, filename)
 
 
+# Allowed file extensions for static frontend assets
+ALLOWED_STATIC_EXTENSIONS = {
+    ".html",
+    ".css",
+    ".js",
+    ".svg",
+    ".png",
+    ".ico",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".txt",
+}
+
+# JSON files explicitly allowed to be served (e.g. PWA manifest)
+ALLOWED_JSON_FILES = {"manifest.json"}
+
+
 # Serve the React app for all routes (catch-all)
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 async def serve_react_app(path):
-    if path and os.path.exists(os.path.join(app.template_folder, path)):
-        return await send_from_directory(app.template_folder, path)
+    if path:
+        ext = os.path.splitext(path)[1].lower()
+        basename = os.path.basename(path)
+        allowed = ext in ALLOWED_STATIC_EXTENSIONS or (
+            ext == ".json" and basename in ALLOWED_JSON_FILES
+        )
+        if allowed and os.path.exists(os.path.join(app.template_folder, path)):
+            return await send_from_directory(app.template_folder, path)
     return await render_template("index.html")
 
 
