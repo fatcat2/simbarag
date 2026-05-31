@@ -24,8 +24,10 @@ if [ "${OBSIDIAN_CONTINUOUS_SYNC}" = "true" ]; then
                --device-name "${OBSIDIAN_DEVICE_NAME:-simbarag}"; then
             # Remove stale lock from previous container run
             rm -rf "${VAULT_PATH}/.obsidian/.sync.lock"
+            # Set sync to pull-only (read-only) mode
+            ob sync-config --mode pull-only --path "${VAULT_PATH}"
             # Start continuous sync in background
-            echo "Starting Obsidian continuous sync..."
+            echo "Starting Obsidian continuous sync (pull-only)..."
             ob sync --continuous --path "${VAULT_PATH}" &
         else
             echo "WARNING: Obsidian sync setup failed. Continuing without sync."
