@@ -21,6 +21,7 @@ class Conversation(Model):
     user: fields.ForeignKeyRelation = fields.ForeignKeyField(
         "models.User", related_name="conversations", null=True
     )
+    channel = fields.CharField(max_length=20, default="web", null=True)
 
     class Meta:
         table = "conversations"

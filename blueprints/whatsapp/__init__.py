@@ -1,18 +1,16 @@
 import os
 import logging
-import asyncio
 import functools
 import time
 from collections import defaultdict
-from quart import Blueprint, request, jsonify, abort
+from quart import Blueprint, request, abort
 from twilio.request_validator import RequestValidator
 from twilio.twiml.messaging_response import MessagingResponse
 
 from blueprints.users.models import User
 from blueprints.conversation.logic import (
-    get_conversation_for_user,
+    get_conversation_for_channel,
     add_message_to_conversation,
-    get_conversation_transcript,
 )
 from blueprints.conversation.agents import main_agent
 from blueprints.conversation.prompts import SIMBA_SYSTEM_PROMPT
@@ -69,6 +67,7 @@ def validate_twilio_request(f):
     so the validated URL matches what Twilio signed against.
     Set TWILIO_SIGNATURE_VALIDATION=false to disable in development.
     """
+
     @functools.wraps(f)
     async def decorated_function(*args, **kwargs):
         if os.getenv("TWILIO_SIGNATURE_VALIDATION", "true").lower() == "false":
@@ -94,6 +93,7 @@ def validate_twilio_request(f):
             abort(403)
 
         return await f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -104,11 +104,15 @@ async def webhook():
     Handle incoming WhatsApp messages from Twilio.
     """
     form_data = await request.form
-    from_number = form_data.get("From") # e.g., "whatsapp:+1234567890"
+    from_number = form_data.get("From")  # e.g., "whatsapp:+1234567890"
     body = form_data.get("Body")
 
     if not from_number or not body:
-        return _twiml_response("Invalid message received.") if from_number else ("Missing From or Body", 400)
+        return (
+            _twiml_response("Invalid message received.")
+            if from_number
+            else ("Missing From or Body", 400)
+        )
 
     # Strip whitespace and check for empty body
     body = body.strip()
@@ -118,12 +122,16 @@ async def webhook():
     # Rate limiting
     if not _check_rate_limit(from_number):
         logger.warning(f"Rate limit exceeded for {from_number}")
-        return _twiml_response("You're sending messages too quickly. Please wait a moment and try again.")
+        return _twiml_response(
+            "You're sending messages too quickly. Please wait a moment and try again."
+        )
 
     # Truncate overly long messages
     if len(body) > MAX_MESSAGE_LENGTH:
         body = body[:MAX_MESSAGE_LENGTH]
-        logger.info(f"Truncated long message from {from_number} to {MAX_MESSAGE_LENGTH} chars")
+        logger.info(
+            f"Truncated long message from {from_number} to {MAX_MESSAGE_LENGTH} chars"
+        )
 
     logger.info(f"Received WhatsApp message from {from_number}: {body[:100]}")
 
@@ -143,16 +151,18 @@ async def webhook():
                 username=username,
                 email=f"{username}@whatsapp.simbarag.local",
                 whatsapp_number=from_number,
-                auth_provider="whatsapp"
+                auth_provider="whatsapp",
             )
             logger.info(f"Created new user for WhatsApp: {username}")
         except Exception as e:
             logger.error(f"Failed to create user for {from_number}: {e}")
-            return _twiml_response("Sorry, something went wrong setting up your account. Please try again later.")
+            return _twiml_response(
+                "Sorry, something went wrong setting up your account. Please try again later."
+            )
 
     # Get or create a conversation for this user
     try:
-        conversation = await get_conversation_for_user(user=user)
+        conversation = await get_conversation_for_channel(user=user, channel="whatsapp")
         await conversation.fetch_related("messages")
     except Exception as e:
         logger.error(f"Failed to get conversation for user {user.username}: {e}")
@@ -165,9 +175,6 @@ async def webhook():
         speaker="user",
         user=user,
     )
-
-    # Get transcript for context
-    transcript = await get_conversation_transcript(user=user, conversation=conversation)
 
     # Build messages payload for LangChain agent with system prompt and conversation history
     try:

@@ -11,7 +11,7 @@ from quart import Blueprint, request
 
 from blueprints.users.models import User
 from blueprints.conversation.logic import (
-    get_conversation_for_user,
+    get_conversation_for_channel,
     add_message_to_conversation,
 )
 from blueprints.conversation.agents import main_agent
@@ -176,7 +176,7 @@ async def webhook():
 
     # Get or create conversation
     try:
-        conversation = await get_conversation_for_user(user=user)
+        conversation = await get_conversation_for_channel(user=user, channel="email")
         await conversation.fetch_related("messages")
     except Exception as e:
         logger.error(f"Failed to get conversation for user {user.username}: {e}")

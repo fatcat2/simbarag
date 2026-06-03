@@ -47,11 +47,27 @@ async def get_the_only_conversation() -> Conversation:
 
 async def get_conversation_for_user(user: blueprints.users.models.User) -> Conversation:
     try:
-        return await Conversation.get(user=user)
+        conversation = await Conversation.get(user=user)
+    except tortoise.exceptions.MultipleObjectsReturned:
+        conversation = (
+            await Conversation.filter(user=user).order_by("created_at").first()
+        )
     except tortoise.exceptions.DoesNotExist:
-        await Conversation.get_or_create(name=f"{user.username}'s chat", user=user)
+        conversation = await Conversation.create(
+            name=f"{user.username}'s chat", user=user
+        )
+    return conversation
 
-        return await Conversation.get(user=user)
+
+async def get_conversation_for_channel(
+    user: blueprints.users.models.User, channel: str
+) -> Conversation:
+    conversation = await Conversation.filter(user=user, channel=channel).first()
+    if conversation is None:
+        conversation = await Conversation.create(
+            name=f"{user.username}'s {channel} chat", user=user, channel=channel
+        )
+    return conversation
 
 
 async def get_conversation_by_id(id: str) -> Conversation:
