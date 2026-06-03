@@ -623,11 +623,11 @@ async def save_user_memory(content: str, config: RunnableConfig) -> str:
 async def get_calendar_events(
     time_range: str = "today",
     days: int = 0,
-    calendar: str = "",
+    calendar_id: str = "primary",
     *,
     config: RunnableConfig,
 ) -> str:
-    """Get upcoming Google Calendar events.
+    """Get upcoming Google Calendar events including all-day events.
 
     Use this tool when the user asks about:
     - What's on their calendar today or this week
@@ -638,27 +638,48 @@ async def get_calendar_events(
         time_range: One of "today", "tomorrow", or "week" (default: "today")
         days: If set to a positive number, show events for this many upcoming days
               (overrides time_range)
-        calendar: Optional calendar name or ID to filter by
+        calendar_id: Calendar ID to query (default: "primary")
 
     Returns:
-        Calendar events as text
+        Calendar events as JSON
     """
     if not config["configurable"].get("is_admin"):
         return "Calendar access is restricted to admin users."
 
     import asyncio
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
 
-    cmd = ["gws", "calendar", "+agenda"]
+    tz = ZoneInfo("America/New_York")
+    now = datetime.now(tz)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
     if days > 0:
-        cmd.extend(["--days", str(days)])
+        end = start + timedelta(days=days)
     elif time_range == "tomorrow":
-        cmd.append("--tomorrow")
+        start = start + timedelta(days=1)
+        end = start + timedelta(days=1)
     elif time_range == "week":
-        cmd.append("--week")
+        end = start + timedelta(days=7)
     else:
-        cmd.append("--today")
-    if calendar:
-        cmd.extend(["--calendar", calendar])
+        end = start + timedelta(days=1)
+
+    cmd = [
+        "gws",
+        "calendar",
+        "events",
+        "list",
+        "--calendarId",
+        calendar_id,
+        "--timeMin",
+        start.isoformat(),
+        "--timeMax",
+        end.isoformat(),
+        "--singleEvents",
+        "true",
+        "--orderBy",
+        "startTime",
+    ]
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
