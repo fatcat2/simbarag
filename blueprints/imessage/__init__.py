@@ -1,5 +1,7 @@
 import os
+import hmac
 import logging
+import functools
 import time
 from collections import defaultdict
 
@@ -74,7 +76,31 @@ async def send_imessage(to_number: str, content: str) -> dict:
         return resp.json()
 
 
+def validate_sendblue_signature(f):
+    """Decorator to validate the SendBlue webhook signing secret."""
+
+    @functools.wraps(f)
+    async def decorated_function(*args, **kwargs):
+        if os.getenv("SENDBLUE_SIGNATURE_VALIDATION", "true").lower() == "false":
+            return await f(*args, **kwargs)
+
+        secret = os.getenv("SENDBLUE_WEBHOOK_SECRET")
+        if not secret:
+            logger.error("SENDBLUE_WEBHOOK_SECRET not set — rejecting request")
+            return jsonify({"error": "Server misconfigured"}), 500
+
+        sig = request.headers.get("sb-signing-secret", "")
+        if not hmac.compare_digest(sig, secret):
+            logger.warning("Invalid SendBlue signing secret")
+            return jsonify({"error": "Unauthorized"}), 403
+
+        return await f(*args, **kwargs)
+
+    return decorated_function
+
+
 @imessage_blueprint.route("/webhook", methods=["POST"])
+@validate_sendblue_signature
 async def webhook():
     """Handle incoming iMessages from SendBlue."""
     data = await request.get_json()
