@@ -65,9 +65,10 @@ def get_current_date() -> str:
     Returns:
         Today's date in YYYY-MM-DD format
     """
-    from datetime import date
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
-    return date.today().isoformat()
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
 
 
 @tool
@@ -618,6 +619,55 @@ async def save_user_memory(content: str, config: RunnableConfig) -> str:
     return await save_memory(user_id=user_id, content=content)
 
 
+@tool
+async def get_calendar_events(
+    time_range: str = "today",
+    days: int = 0,
+    calendar: str = "",
+    *,
+    config: RunnableConfig,
+) -> str:
+    """Get upcoming Google Calendar events.
+
+    Use this tool when the user asks about:
+    - What's on their calendar today or this week
+    - Upcoming meetings or events
+    - Scheduling or availability questions
+
+    Args:
+        time_range: One of "today", "tomorrow", or "week" (default: "today")
+        days: If set to a positive number, show events for this many upcoming days
+              (overrides time_range)
+        calendar: Optional calendar name or ID to filter by
+
+    Returns:
+        Calendar events as text
+    """
+    if not config["configurable"].get("is_admin"):
+        return "Calendar access is restricted to admin users."
+
+    import asyncio
+
+    cmd = ["gws", "calendar", "+agenda"]
+    if days > 0:
+        cmd.extend(["--days", str(days)])
+    elif time_range == "tomorrow":
+        cmd.append("--tomorrow")
+    elif time_range == "week":
+        cmd.append("--week")
+    else:
+        cmd.append("--today")
+    if calendar:
+        cmd.extend(["--calendar", calendar])
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        return f"Calendar error: {stderr.decode()}"
+    return stdout.decode()
+
+
 # Create tools list based on what's available
 tools = [get_current_date, simba_search, web_search, save_user_memory]
 if ynab_enabled:
@@ -642,6 +692,8 @@ if obsidian_enabled:
             journal_complete_task,
         ]
     )
+if os.getenv("GOOGLE_CALENDAR_ENABLED"):
+    tools.append(get_calendar_events)
 
 # Llama 3.1 supports native function calling via OpenAI-compatible API
 main_agent = create_agent(model=model_with_fallback, tools=tools)

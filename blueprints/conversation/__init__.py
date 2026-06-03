@@ -96,7 +96,9 @@ async def query():
         conversation, query, system_prompt=system_prompt
     )
     payload = {"messages": messages_payload}
-    agent_config = {"configurable": {"user_id": str(user.id)}}
+    agent_config = {
+        "configurable": {"user_id": str(user.id), "is_admin": user.is_admin()}
+    }
 
     response = await main_agent.ainvoke(payload, config=agent_config)
     message = response.get("messages", [])[-1].content
@@ -183,7 +185,9 @@ async def stream_query():
         conversation, query_text or "", image_description, system_prompt=system_prompt
     )
     payload = {"messages": messages_payload}
-    agent_config = {"configurable": {"user_id": str(user.id)}}
+    agent_config = {
+        "configurable": {"user_id": str(user.id), "is_admin": user.is_admin()}
+    }
 
     async def event_generator():
         final_message = None

@@ -65,11 +65,14 @@ services:
       - S3_REGION=${S3_REGION:-garage}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://localhost:11434}
       - FERNET_KEY=${FERNET_KEY}
+      - GOOGLE_CALENDAR_ENABLED=${GOOGLE_CALENDAR_ENABLED:-}
+      - GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=${GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE:-/app/config/gws-credentials.json}
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ./obvault:/app/data/obsidian
+      - ./credentials.json:/app/config/gws-credentials.json:ro
     restart: unless-stopped
 
 volumes:
