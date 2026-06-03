@@ -212,32 +212,42 @@ async def me():
     user = await User.get_or_none(id=user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    return jsonify({
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "is_admin": user.is_admin(),
-    })
+    return jsonify(
+        {
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "is_admin": user.is_admin(),
+        }
+    )
 
 
 @user_blueprint.route("/admin/users", methods=["GET"])
 @admin_required
 async def list_users():
     from blueprints.email.helpers import get_user_email_address
+
     users = await User.all().order_by("username")
     mailgun_domain = os.getenv("MAILGUN_DOMAIN", "")
-    return jsonify([
-        {
-            "id": str(u.id),
-            "username": u.username,
-            "email": u.email,
-            "whatsapp_number": u.whatsapp_number,
-            "auth_provider": u.auth_provider,
-            "email_enabled": u.email_enabled,
-            "email_address": get_user_email_address(u.email_hmac_token, mailgun_domain) if u.email_hmac_token and u.email_enabled else None,
-        }
-        for u in users
-    ])
+    return jsonify(
+        [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "email": u.email,
+                "whatsapp_number": u.whatsapp_number,
+                "imessage_number": u.imessage_number,
+                "auth_provider": u.auth_provider,
+                "email_enabled": u.email_enabled,
+                "email_address": get_user_email_address(
+                    u.email_hmac_token, mailgun_domain
+                )
+                if u.email_hmac_token and u.email_enabled
+                else None,
+            }
+            for u in users
+        ]
+    )
 
 
 @user_blueprint.route("/admin/users/<user_id>/whatsapp", methods=["PUT"])
@@ -254,17 +264,21 @@ async def set_whatsapp(user_id):
 
     conflict = await User.filter(whatsapp_number=number).exclude(id=user_id).first()
     if conflict:
-        return jsonify({"error": "That WhatsApp number is already linked to another account"}), 409
+        return jsonify(
+            {"error": "That WhatsApp number is already linked to another account"}
+        ), 409
 
     user.whatsapp_number = number
     await user.save()
-    return jsonify({
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "whatsapp_number": user.whatsapp_number,
-        "auth_provider": user.auth_provider,
-    })
+    return jsonify(
+        {
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "whatsapp_number": user.whatsapp_number,
+            "auth_provider": user.auth_provider,
+        }
+    )
 
 
 @user_blueprint.route("/admin/users/<user_id>/whatsapp", methods=["DELETE"])
@@ -279,11 +293,55 @@ async def unlink_whatsapp(user_id):
     return jsonify({"ok": True})
 
 
+@user_blueprint.route("/admin/users/<user_id>/imessage", methods=["PUT"])
+@admin_required
+async def set_imessage(user_id):
+    data = await request.get_json()
+    number = (data or {}).get("imessage_number", "").strip()
+    if not number:
+        return jsonify({"error": "imessage_number is required"}), 400
+
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    conflict = await User.filter(imessage_number=number).exclude(id=user_id).first()
+    if conflict:
+        return jsonify(
+            {"error": "That iMessage number is already linked to another account"}
+        ), 409
+
+    user.imessage_number = number
+    await user.save()
+    return jsonify(
+        {
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "imessage_number": user.imessage_number,
+            "auth_provider": user.auth_provider,
+        }
+    )
+
+
+@user_blueprint.route("/admin/users/<user_id>/imessage", methods=["DELETE"])
+@admin_required
+async def unlink_imessage(user_id):
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.imessage_number = None
+    await user.save()
+    return jsonify({"ok": True})
+
+
 @user_blueprint.route("/admin/users/<user_id>/email", methods=["PUT"])
 @admin_required
 async def toggle_email(user_id):
     """Enable email channel for a user, generating an HMAC token."""
     from blueprints.email.helpers import generate_email_token, get_user_email_address
+
     user = await User.get_or_none(id=user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -299,15 +357,19 @@ async def toggle_email(user_id):
     user.email_enabled = True
     await user.save()
 
-    return jsonify({
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "whatsapp_number": user.whatsapp_number,
-        "auth_provider": user.auth_provider,
-        "email_enabled": user.email_enabled,
-        "email_address": get_user_email_address(user.email_hmac_token, mailgun_domain),
-    })
+    return jsonify(
+        {
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "whatsapp_number": user.whatsapp_number,
+            "auth_provider": user.auth_provider,
+            "email_enabled": user.email_enabled,
+            "email_address": get_user_email_address(
+                user.email_hmac_token, mailgun_domain
+            ),
+        }
+    )
 
 
 @user_blueprint.route("/admin/users/<user_id>/email", methods=["DELETE"])

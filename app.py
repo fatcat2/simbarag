@@ -14,6 +14,7 @@ import blueprints.email
 import blueprints.rag
 import blueprints.users
 import blueprints.whatsapp
+import blueprints.imessage
 import blueprints.users.models
 from config.db import TORTOISE_CONFIG
 
@@ -50,6 +51,7 @@ app.register_blueprint(blueprints.conversation.conversation_blueprint)
 app.register_blueprint(blueprints.email.email_blueprint)
 app.register_blueprint(blueprints.rag.rag_blueprint)
 app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
+app.register_blueprint(blueprints.imessage.imessage_blueprint)
 
 
 async def _obsidian_sync_loop():
