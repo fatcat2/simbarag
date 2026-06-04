@@ -1,11 +1,12 @@
 import { useCallback, useState, useRef } from "react";
-import { LogOut, Shield, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
+import { LogOut, Shield, Clock, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
 import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
 import { AdminPanel } from "./AdminPanel";
+import { ScheduledMessagesPanel } from "./ScheduledMessagesPanel";
 import { cn } from "../lib/utils";
 import { useConversations } from "../hooks/useConversations";
 import { useChat } from "../hooks/useChat";
@@ -22,6 +23,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
   const [showConversations, setShowConversations] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showScheduler, setShowScheduler] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false);
@@ -157,13 +159,22 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
 
             <div className="px-2 pb-3 pt-2 border-t border-white/8 flex flex-col gap-0.5">
               {isAdmin && (
-                <button
-                  onClick={() => setShowAdminPanel(true)}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
-                >
-                  <Shield size={14} />
-                  <span>Admin</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowAdminPanel(true)}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
+                  >
+                    <Shield size={14} />
+                    <span>Admin</span>
+                  </button>
+                  <button
+                    onClick={() => setShowScheduler(true)}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
+                  >
+                    <Clock size={14} />
+                    <span>Scheduler</span>
+                  </button>
+                </>
               )}
               <button
                 onClick={handleLogout}
@@ -178,6 +189,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
       </aside>
 
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
+      {showScheduler && <ScheduledMessagesPanel onClose={() => setShowScheduler(false)} />}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-warm-white border-b border-sand-light/60">

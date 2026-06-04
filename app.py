@@ -15,6 +15,7 @@ import blueprints.rag
 import blueprints.users
 import blueprints.whatsapp
 import blueprints.imessage
+import blueprints.scheduled_messages
 import blueprints.users.models
 from config.db import TORTOISE_CONFIG
 
@@ -52,6 +53,7 @@ app.register_blueprint(blueprints.email.email_blueprint)
 app.register_blueprint(blueprints.rag.rag_blueprint)
 app.register_blueprint(blueprints.whatsapp.whatsapp_blueprint)
 app.register_blueprint(blueprints.imessage.imessage_blueprint)
+app.register_blueprint(blueprints.scheduled_messages.scheduled_messages_blueprint)
 
 
 async def _obsidian_sync_loop():
@@ -86,8 +88,13 @@ async def lifespan():
     if os.getenv("OBSIDIAN_CONTINUOUS_SYNC") == "true":
         watcher_task = asyncio.create_task(_obsidian_sync_loop())
 
+    from blueprints.scheduled_messages.scheduler import scheduled_messages_loop
+
+    scheduler_task = asyncio.create_task(scheduled_messages_loop())
+
     yield
 
+    scheduler_task.cancel()
     if watcher_task is not None:
         watcher_task.cancel()
 

@@ -16,6 +16,7 @@ TORTOISE_CONFIG = {
                 "blueprints.conversation.models",
                 "blueprints.users.models",
                 "blueprints.email.models",
+                "blueprints.scheduled_messages.models",
                 "aerich.models",
             ],
             "default_connection": "default",

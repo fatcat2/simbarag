@@ -224,6 +224,8 @@ async def webhook():
         user=user,
     )
 
-    await send_imessage(from_number, response_text)
+    from utils.strip_markdown import strip_markdown
+
+    await send_imessage(from_number, strip_markdown(response_text))
 
     return jsonify({"status": "ok"}), 200
