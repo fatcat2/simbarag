@@ -16,6 +16,13 @@ class MessageStatus(enum.Enum):
     CANCELLED = "cancelled"
 
 
+class Recurrence(enum.Enum):
+    NONE = "none"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+
 class ScheduledMessage(Model):
     id = fields.UUIDField(primary_key=True)
     recipient = fields.CharField(max_length=255)
@@ -25,6 +32,9 @@ class ScheduledMessage(Model):
     scheduled_at = fields.DatetimeField()
     status = fields.CharEnumField(
         enum_type=MessageStatus, max_length=10, default=MessageStatus.PENDING
+    )
+    recurrence = fields.CharEnumField(
+        enum_type=Recurrence, max_length=10, default=Recurrence.NONE
     )
     error_message = fields.TextField(null=True)
     created_by = fields.ForeignKeyField(

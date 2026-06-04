@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from quart import Blueprint, request, jsonify
 
 from blueprints.users.decorators import admin_required
-from .models import ScheduledMessage, MessageChannel, MessageStatus
+from .models import ScheduledMessage, MessageChannel, MessageStatus, Recurrence
 
 scheduled_messages_blueprint = Blueprint(
     "scheduled_messages_api", __name__, url_prefix="/api/scheduled-messages"
@@ -22,6 +22,7 @@ def _serialize(msg: ScheduledMessage) -> dict:
         "subject": msg.subject,
         "scheduled_at": msg.scheduled_at.isoformat(),
         "status": msg.status.value,
+        "recurrence": msg.recurrence.value,
         "error_message": msg.error_message,
         "created_at": msg.created_at.isoformat(),
         "updated_at": msg.updated_at.isoformat(),
@@ -48,6 +49,8 @@ async def create_message():
     subject = (data.get("subject") or "").strip() or None
     scheduled_at_str = data.get("scheduled_at")
 
+    recurrence_str = data.get("recurrence", "none")
+
     if not recipient or not channel or not content or not scheduled_at_str:
         return jsonify(
             {"error": "recipient, channel, content, and scheduled_at are required"}
@@ -58,6 +61,15 @@ async def create_message():
     except ValueError:
         return jsonify(
             {"error": f"Invalid channel: {channel}. Must be 'imessage' or 'email'"}
+        ), 400
+
+    try:
+        recurrence_enum = Recurrence(recurrence_str)
+    except ValueError:
+        return jsonify(
+            {
+                "error": f"Invalid recurrence: {recurrence_str}. Must be 'none', 'daily', 'weekly', or 'monthly'"
+            }
         ), 400
 
     if channel_enum == MessageChannel.EMAIL and not subject:
@@ -83,6 +95,7 @@ async def create_message():
         content=content,
         subject=subject,
         scheduled_at=scheduled_at,
+        recurrence=recurrence_enum,
         created_by_id=user_id,
     )
     return jsonify(_serialize(msg)), 201
@@ -113,6 +126,11 @@ async def update_message(msg_id: str):
         msg.content = data["content"].strip()
     if "subject" in data:
         msg.subject = data["subject"].strip() or None
+    if "recurrence" in data:
+        try:
+            msg.recurrence = Recurrence(data["recurrence"])
+        except ValueError:
+            return jsonify({"error": f"Invalid recurrence: {data['recurrence']}"}), 400
     if "scheduled_at" in data:
         try:
             scheduled_at = datetime.fromisoformat(data["scheduled_at"])

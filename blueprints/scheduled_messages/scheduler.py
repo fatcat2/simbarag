@@ -1,12 +1,45 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 
-from .models import ScheduledMessage, MessageChannel, MessageStatus
+from .models import ScheduledMessage, MessageChannel, MessageStatus, Recurrence
 
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL = 15
+
+RECURRENCE_DELTAS = {
+    Recurrence.DAILY: relativedelta(days=1),
+    Recurrence.WEEKLY: relativedelta(weeks=1),
+    Recurrence.MONTHLY: relativedelta(months=1),
+}
+
+
+async def _schedule_next_occurrence(msg: ScheduledMessage):
+    """Create the next pending occurrence for a recurring message."""
+    delta = RECURRENCE_DELTAS.get(msg.recurrence)
+    if not delta:
+        return
+
+    next_at = msg.scheduled_at + delta
+    # If we missed several intervals, advance until we're in the future
+    now = datetime.now(timezone.utc)
+    while next_at <= now:
+        next_at += delta
+
+    await ScheduledMessage.create(
+        recipient=msg.recipient,
+        channel=msg.channel,
+        content=msg.content,
+        subject=msg.subject,
+        scheduled_at=next_at,
+        recurrence=msg.recurrence,
+        created_by_id=msg.created_by_id,
+    )
+    logger.info(
+        f"Scheduled next {msg.recurrence.value} occurrence for {msg.id} at {next_at.isoformat()}"
+    )
 
 
 async def scheduled_messages_loop():
@@ -44,6 +77,10 @@ async def scheduled_messages_loop():
                     logger.info(
                         f"Sent scheduled {msg.channel.value} message {msg.id} to {msg.recipient}"
                     )
+
+                    # Schedule next occurrence for recurring messages
+                    if msg.recurrence != Recurrence.NONE:
+                        await _schedule_next_occurrence(msg)
 
                 except Exception as e:
                     msg.status = MessageStatus.FAILED

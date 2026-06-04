@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Clock, Send, Trash2, XCircle, RotateCcw } from "lucide-react";
+import { X, Clock, Send, Trash2, XCircle, RotateCcw, Repeat } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -36,6 +36,7 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly" | "monthly">("none");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,6 +58,7 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
         channel,
         content,
         scheduled_at: new Date(scheduledAt).toISOString(),
+        recurrence,
       };
       if (channel === "email") data.subject = subject;
       await scheduledMessageService.create(data);
@@ -64,6 +66,7 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
       setSubject("");
       setContent("");
       setScheduledAt("");
+      setRecurrence("none");
       refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to schedule message");
@@ -167,6 +170,25 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
               />
             </div>
 
+            <div className="flex items-center gap-2">
+              <Repeat size={12} className="text-warm-gray" />
+              <span className="text-xs text-warm-gray">Repeat:</span>
+              {(["none", "daily", "weekly", "monthly"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRecurrence(r)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    recurrence === r
+                      ? "bg-amber-pale text-amber-glow"
+                      : "bg-sand-light/40 text-warm-gray hover:text-charcoal",
+                  )}
+                >
+                  {r === "none" ? "Once" : r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              ))}
+            </div>
+
             {channel === "email" && (
               <Input
                 value={subject}
@@ -213,6 +235,7 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
                   <TableHead>Recipient</TableHead>
                   <TableHead>Content</TableHead>
                   <TableHead>Scheduled</TableHead>
+                  <TableHead>Repeat</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-28">Actions</TableHead>
                 </TableRow>
@@ -233,6 +256,9 @@ export const ScheduledMessagesPanel = ({ onClose }: Props) => {
                     </TableCell>
                     <TableCell className="text-xs text-warm-gray">
                       {new Date(msg.scheduled_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-xs text-warm-gray capitalize">
+                      {msg.recurrence === "none" ? "—" : msg.recurrence}
                     </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_BADGE[msg.status]}>{msg.status}</Badge>
