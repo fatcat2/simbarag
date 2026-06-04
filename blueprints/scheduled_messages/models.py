@@ -36,6 +36,7 @@ class ScheduledMessage(Model):
     recurrence = fields.CharEnumField(
         enum_type=Recurrence, max_length=20, default=Recurrence.NONE
     )
+    use_agent = fields.BooleanField(default=False)
     error_message = fields.TextField(null=True)
     created_by = fields.ForeignKeyField(
         "models.User", related_name="scheduled_messages"

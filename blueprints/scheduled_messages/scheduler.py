@@ -16,6 +16,19 @@ RECURRENCE_DELTAS = {
 }
 
 
+async def _run_agent(prompt: str) -> str:
+    """Run a prompt through the LangChain agent and return the response text."""
+    from blueprints.conversation.agents import main_agent
+    from blueprints.conversation.prompts import SIMBA_SYSTEM_PROMPT
+
+    messages_payload = [
+        {"role": "system", "content": SIMBA_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    response = await main_agent.ainvoke({"messages": messages_payload})
+    return response.get("messages", [])[-1].content
+
+
 async def _schedule_next_occurrence(msg: ScheduledMessage):
     """Create the next pending occurrence for a recurring message."""
     delta = RECURRENCE_DELTAS.get(msg.recurrence)
@@ -35,6 +48,7 @@ async def _schedule_next_occurrence(msg: ScheduledMessage):
         subject=msg.subject,
         scheduled_at=next_at,
         recurrence=msg.recurrence,
+        use_agent=msg.use_agent,
         created_by_id=msg.created_by_id,
     )
     logger.info(
@@ -56,11 +70,16 @@ async def scheduled_messages_loop():
 
             for msg in due:
                 try:
+                    send_content = msg.content
+
+                    if msg.use_agent:
+                        send_content = await _run_agent(msg.content)
+
                     if msg.channel == MessageChannel.IMESSAGE:
                         from blueprints.imessage import send_imessage
                         from utils.strip_markdown import strip_markdown
 
-                        await send_imessage(msg.recipient, strip_markdown(msg.content))
+                        await send_imessage(msg.recipient, strip_markdown(send_content))
 
                     elif msg.channel == MessageChannel.EMAIL:
                         from blueprints.email import send_email_reply
@@ -68,7 +87,7 @@ async def scheduled_messages_loop():
                         await send_email_reply(
                             to=msg.recipient,
                             subject=msg.subject or "(no subject)",
-                            body=msg.content,
+                            body=send_content,
                         )
 
                     msg.status = MessageStatus.SENT

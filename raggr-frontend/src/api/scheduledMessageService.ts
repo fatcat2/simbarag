@@ -9,6 +9,7 @@ export interface ScheduledMessage {
   scheduled_at: string;
   status: "pending" | "sent" | "failed" | "cancelled";
   recurrence: "none" | "daily" | "weekly" | "monthly";
+  use_agent: boolean;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface CreateScheduledMessage {
   subject?: string;
   scheduled_at: string;
   recurrence?: "none" | "daily" | "weekly" | "monthly";
+  use_agent?: boolean;
 }
 
 class ScheduledMessageService {

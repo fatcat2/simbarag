@@ -23,6 +23,7 @@ def _serialize(msg: ScheduledMessage) -> dict:
         "scheduled_at": msg.scheduled_at.isoformat(),
         "status": msg.status.value,
         "recurrence": msg.recurrence.value,
+        "use_agent": msg.use_agent,
         "error_message": msg.error_message,
         "created_at": msg.created_at.isoformat(),
         "updated_at": msg.updated_at.isoformat(),
@@ -89,6 +90,8 @@ async def create_message():
 
     user_id = get_jwt_identity()
 
+    use_agent = bool(data.get("use_agent", False))
+
     msg = await ScheduledMessage.create(
         recipient=recipient,
         channel=channel_enum,
@@ -96,6 +99,7 @@ async def create_message():
         subject=subject,
         scheduled_at=scheduled_at,
         recurrence=recurrence_enum,
+        use_agent=use_agent,
         created_by_id=user_id,
     )
     return jsonify(_serialize(msg)), 201
@@ -131,6 +135,8 @@ async def update_message(msg_id: str):
             msg.recurrence = Recurrence(data["recurrence"])
         except ValueError:
             return jsonify({"error": f"Invalid recurrence: {data['recurrence']}"}), 400
+    if "use_agent" in data:
+        msg.use_agent = bool(data["use_agent"])
     if "scheduled_at" in data:
         try:
             scheduled_at = datetime.fromisoformat(data["scheduled_at"])
