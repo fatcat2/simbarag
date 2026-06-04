@@ -26,15 +26,15 @@ class Recurrence(enum.Enum):
 class ScheduledMessage(Model):
     id = fields.UUIDField(primary_key=True)
     recipient = fields.CharField(max_length=255)
-    channel = fields.CharEnumField(enum_type=MessageChannel, max_length=10)
+    channel = fields.CharEnumField(enum_type=MessageChannel, max_length=20)
     content = fields.TextField()
     subject = fields.CharField(max_length=255, null=True)
     scheduled_at = fields.DatetimeField()
     status = fields.CharEnumField(
-        enum_type=MessageStatus, max_length=10, default=MessageStatus.PENDING
+        enum_type=MessageStatus, max_length=20, default=MessageStatus.PENDING
     )
     recurrence = fields.CharEnumField(
-        enum_type=Recurrence, max_length=10, default=Recurrence.NONE
+        enum_type=Recurrence, max_length=20, default=Recurrence.NONE
     )
     error_message = fields.TextField(null=True)
     created_by = fields.ForeignKeyField(
