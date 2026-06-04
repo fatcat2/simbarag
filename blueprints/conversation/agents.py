@@ -121,7 +121,7 @@ async def simba_search(query: str):
         Relevant information from Simba's documents
     """
     print(f"[SIMBA SEARCH] Tool called with query: {query}")
-    serialized, docs = await query_vector_store(query=query)
+    serialized, docs = await query_vector_store(query=query, source="paperless")
     print(f"[SIMBA SEARCH] Found {len(docs)} documents")
     print(f"[SIMBA SEARCH] Serialized result length: {len(serialized)}")
     print(f"[SIMBA SEARCH] First 200 chars: {serialized[:200]}")
@@ -329,8 +329,8 @@ async def obsidian_search_notes(query: str) -> str:
         return "Obsidian integration is not configured. Please set OBSIDIAN_VAULT_PATH environment variable."
 
     try:
-        # Query vector store for obsidian documents
-        serialized, docs = await query_vector_store(query=query)
+        # Query vector store filtered to obsidian source only
+        serialized, docs = await query_vector_store(query=query, source="obsidian")
         return serialized
 
     except Exception as e:
