@@ -79,6 +79,7 @@ services:
       - SENDBLUE_WEBHOOK_SECRET=${SENDBLUE_WEBHOOK_SECRET}
       - SENDBLUE_SIGNATURE_VALIDATION=${SENDBLUE_SIGNATURE_VALIDATION:-true}
       - ALLOWED_IMESSAGE_NUMBERS=${ALLOWED_IMESSAGE_NUMBERS}
+      - SIMBAKIT_URL=${SIMBAKIT_URL:-http://simbakit:8585}
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,5 +88,18 @@ services:
       - ./credentials.json:/app/config/gws-credentials.json:ro
     restart: unless-stopped
 
+  simbakit:
+    build:
+      context: ./simbakit
+    restart: unless-stopped
+    volumes:
+      - simbakit-data:/app/data
+    environment:
+      - PETKIT_USERNAME=${PETKIT_USERNAME}
+      - PETKIT_PASSWORD=${PETKIT_PASSWORD}
+      - PETKIT_REGION=${PETKIT_REGION:-US}
+      - PETKIT_TIMEZONE=${PETKIT_TIMEZONE:-America/New_York}
+
 volumes:
   postgres_data:
+  simbakit-data:

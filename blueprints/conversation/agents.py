@@ -12,6 +12,7 @@ from tavily import AsyncTavilyClient
 from blueprints.conversation.memory import save_memory
 from blueprints.rag.logic import query_vector_store
 from utils.obsidian_service import ObsidianService
+from utils.simbakit_service import SimbaKitService
 from utils.ynab_service import YNABService
 
 # Load environment variables
@@ -42,6 +43,14 @@ try:
 except (ValueError, Exception) as e:
     print(f"YNAB service not initialized: {e}")
     ynab_enabled = False
+
+# Initialize SimbaKit service (will only work if SIMBAKIT_URL is set)
+try:
+    simbakit_service = SimbaKitService()
+    simbakit_enabled = True
+except (ValueError, Exception) as e:
+    print(f"SimbaKit service not initialized: {e}")
+    simbakit_enabled = False
 
 # Initialize Obsidian service (will only work if OBSIDIAN_VAULT_PATH is set)
 try:
@@ -689,8 +698,97 @@ async def get_calendar_events(
     return stdout.decode()
 
 
+@tool
+async def simbakit_device_status() -> str:
+    """Get the status of all PetKit smart devices and any active alerts.
+
+    Use this tool when the user asks about:
+    - PetKit device statuses or health
+    - Whether any pet devices have issues or alerts
+    - Litter box, water fountain, or feeder device status
+    - Any device errors or warnings
+
+    Returns:
+        Device statuses and active alerts from all PetKit devices.
+    """
+    if not simbakit_enabled:
+        return "SimbaKit integration is not configured. Please set SIMBAKIT_URL environment variable."
+
+    try:
+        devices = await simbakit_service.get_devices()
+        alerts = await simbakit_service.get_alerts()
+        return f"{devices}\n\n{alerts}"
+    except Exception as e:
+        return f"Error fetching device status: {str(e)}"
+
+
+@tool
+async def simbakit_weight_history(pet_name: str = "", days: int = 30) -> str:
+    """Get pet weight history and trends from PetKit smart litter box.
+
+    Use this tool when the user asks about:
+    - How much Simba weighs or pet weight
+    - Weight trends or changes over time
+    - Recent weight measurements
+
+    Args:
+        pet_name: Name of the pet to filter by (optional, defaults to all pets)
+        days: Number of days of history to retrieve (default 30)
+
+    Returns:
+        Weight records, averages, and trends.
+    """
+    if not simbakit_enabled:
+        return "SimbaKit integration is not configured. Please set SIMBAKIT_URL environment variable."
+
+    try:
+        return await simbakit_service.get_pet_weights(
+            pet_name=pet_name or None,
+            days=days,
+        )
+    except Exception as e:
+        return f"Error fetching weight history: {str(e)}"
+
+
+@tool
+async def simbakit_litter_activity(pet_name: str = "", days: int = 7) -> str:
+    """Get litter box activity (bathroom visits) from PetKit smart litter box.
+
+    Use this tool when the user asks about:
+    - Simba's litter box usage or bathroom habits
+    - How often the cat poops or pees
+    - Litter box visit statistics
+    - Recent litter box events
+
+    Args:
+        pet_name: Name of the pet to filter by (optional, defaults to all pets)
+        days: Number of days of history to retrieve (default 7)
+
+    Returns:
+        Litter box visit statistics and recent events.
+    """
+    if not simbakit_enabled:
+        return "SimbaKit integration is not configured. Please set SIMBAKIT_URL environment variable."
+
+    try:
+        return await simbakit_service.get_litter_events(
+            pet_name=pet_name or None,
+            days=days,
+        )
+    except Exception as e:
+        return f"Error fetching litter activity: {str(e)}"
+
+
 # Create tools list based on what's available
 tools = [get_current_date, simba_search, web_search, save_user_memory]
+if simbakit_enabled:
+    tools.extend(
+        [
+            simbakit_device_status,
+            simbakit_weight_history,
+            simbakit_litter_activity,
+        ]
+    )
 if ynab_enabled:
     tools.extend(
         [
