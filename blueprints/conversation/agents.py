@@ -11,6 +11,7 @@ from tavily import AsyncTavilyClient
 
 from blueprints.conversation.memory import save_memory
 from blueprints.rag.logic import query_vector_store
+from utils.mealie_service import MealieService
 from utils.obsidian_service import ObsidianService
 from utils.simbakit_service import SimbaKitService
 from utils.ynab_service import YNABService
@@ -51,6 +52,14 @@ try:
 except (ValueError, Exception) as e:
     print(f"SimbaKit service not initialized: {e}")
     simbakit_enabled = False
+
+# Initialize Mealie service (will only work if MEALIE_BASE_URL is set)
+try:
+    mealie_service = MealieService()
+    mealie_enabled = True
+except (ValueError, Exception) as e:
+    print(f"Mealie service not initialized: {e}")
+    mealie_enabled = False
 
 # Initialize Obsidian service (will only work if OBSIDIAN_VAULT_PATH is set)
 try:
@@ -316,6 +325,223 @@ def ynab_insights(months_back: int = 3) -> str:
         return summary
     except Exception as e:
         return f"Error generating insights: {str(e)}"
+
+
+@tool
+async def mealie_todays_meals() -> str:
+    """Get today's meal plan from Mealie.
+
+    Use this tool when the user asks about:
+    - What's for dinner/lunch/breakfast today
+    - Today's meal plan
+    - What meals are planned for today
+
+    Returns:
+        Today's planned meals with recipe names and meal types.
+    """
+    if not mealie_enabled:
+        return "Mealie integration is not configured. Please set MEALIE_BASE_URL and MEALIE_API_TOKEN environment variables."
+
+    try:
+        result = await mealie_service.get_todays_meals()
+
+        if result["total_meals"] == 0:
+            return f"No meals planned for today ({result['today']})."
+
+        lines = [f"Meals planned for today ({result['today']}):"]
+        for meal in result["meals"]:
+            name = meal["recipe_name"] or meal["title"] or "Untitled"
+            lines.append(f"- {meal['entry_type'].capitalize()}: {name}")
+            if meal["note"]:
+                lines.append(f"  Note: {meal['note']}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error fetching today's meals: {str(e)}"
+
+
+@tool
+async def mealie_meal_plans(start_date: str = "", end_date: str = "") -> str:
+    """Get meal plans for a date range from Mealie.
+
+    Use this tool when the user asks about:
+    - Meal plans for this week or a specific date range
+    - What's planned for upcoming meals
+    - Weekly meal schedule
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format (optional, defaults to today)
+        end_date: End date in YYYY-MM-DD format (optional, defaults to 7 days from start)
+
+    Returns:
+        Meal plans organized by date.
+    """
+    if not mealie_enabled:
+        return "Mealie integration is not configured. Please set MEALIE_BASE_URL and MEALIE_API_TOKEN environment variables."
+
+    try:
+        result = await mealie_service.get_meal_plans(
+            start_date=start_date or None,
+            end_date=end_date or None,
+        )
+
+        if result["total_plans"] == 0:
+            return f"No meal plans found from {result['start_date']} to {result['end_date']}."
+
+        lines = [
+            f"Meal plans from {result['start_date']} to {result['end_date']} ({result['total_plans']} meals):"
+        ]
+        for date, plans in sorted(result["plans_by_date"].items()):
+            lines.append(f"\n{date}:")
+            for plan in plans:
+                name = plan["recipe_name"] or plan["title"] or "Untitled"
+                lines.append(f"  - {plan['entry_type'].capitalize()}: {name}")
+                if plan["note"]:
+                    lines.append(f"    Note: {plan['note']}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error fetching meal plans: {str(e)}"
+
+
+@tool
+async def mealie_get_recipe(recipe_slug: str) -> str:
+    """Get full recipe details from Mealie including ingredients and instructions.
+
+    Use this tool when the user asks about:
+    - Recipe details, ingredients, or instructions
+    - How to make a specific recipe
+    - What ingredients are needed for a meal
+
+    Args:
+        recipe_slug: The recipe's slug identifier (from meal plan data)
+
+    Returns:
+        Full recipe with ingredients, instructions, prep/cook times, and servings.
+    """
+    if not mealie_enabled:
+        return "Mealie integration is not configured. Please set MEALIE_BASE_URL and MEALIE_API_TOKEN environment variables."
+
+    try:
+        recipe = await mealie_service.get_recipe(recipe_slug)
+
+        lines = [f"**{recipe['name']}**"]
+        if recipe["description"]:
+            lines.append(recipe["description"])
+        lines.append("")
+
+        if recipe["servings"]:
+            lines.append(f"Servings: {recipe['servings']}")
+        times = []
+        if recipe["prep_time"]:
+            times.append(f"Prep: {recipe['prep_time']}")
+        if recipe["cook_time"]:
+            times.append(f"Cook: {recipe['cook_time']}")
+        if recipe["total_time"]:
+            times.append(f"Total: {recipe['total_time']}")
+        if times:
+            lines.append(" | ".join(times))
+
+        if recipe["ingredients"]:
+            lines.append("\nIngredients:")
+            for ing in recipe["ingredients"]:
+                lines.append(f"- {ing['display']}")
+
+        if recipe["instructions"]:
+            lines.append("\nInstructions:")
+            for i, step in enumerate(recipe["instructions"], 1):
+                text = step.get("text", "")
+                lines.append(f"{i}. {text}")
+
+        if recipe["tags"]:
+            lines.append(f"\nTags: {', '.join(recipe['tags'])}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error fetching recipe: {str(e)}"
+
+
+@tool
+async def mealie_shopping_lists() -> str:
+    """Get shopping lists and their items from Mealie.
+
+    Use this tool when the user asks about:
+    - What's on the shopping list
+    - What groceries are needed
+    - Shopping list items
+
+    Returns:
+        Shopping lists with unchecked (needed) and checked (done) items.
+    """
+    if not mealie_enabled:
+        return "Mealie integration is not configured. Please set MEALIE_BASE_URL and MEALIE_API_TOKEN environment variables."
+
+    try:
+        result = await mealie_service.get_shopping_lists()
+
+        if result["total_lists"] == 0:
+            return "No shopping lists found."
+
+        lines = [f"Shopping lists ({result['total_unchecked_items']} items needed):"]
+        for sl in result["shopping_lists"]:
+            lines.append(
+                f"\n**{sl['name']}** ({len(sl['unchecked_items'])} items needed)"
+            )
+            if sl["unchecked_items"]:
+                for item in sl["unchecked_items"]:
+                    qty = (
+                        f" x{item['quantity']}"
+                        if item["quantity"] and item["quantity"] != 1
+                        else ""
+                    )
+                    lines.append(f"  - [ ] {item['name']}{qty}")
+            if sl["checked_items"]:
+                lines.append(
+                    f"  ({len(sl['checked_items'])} items already checked off)"
+                )
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error fetching shopping lists: {str(e)}"
+
+
+@tool
+async def mealie_create_meal_plan(
+    date: str,
+    entry_type: str = "dinner",
+    recipe_slug: str = "",
+    title: str = "",
+    note: str = "",
+) -> str:
+    """Create a new meal plan entry in Mealie.
+
+    Use this tool when the user wants to:
+    - Add a meal to the meal plan
+    - Plan dinner/lunch/breakfast for a specific day
+    - Schedule a recipe for a date
+
+    Args:
+        date: Date in YYYY-MM-DD format
+        entry_type: Type of meal - breakfast, lunch, dinner, or side (default: dinner)
+        recipe_slug: Recipe slug to add (optional)
+        title: Custom title if no recipe (optional)
+        note: Additional notes (optional)
+
+    Returns:
+        Confirmation of the created meal plan entry.
+    """
+    if not mealie_enabled:
+        return "Mealie integration is not configured. Please set MEALIE_BASE_URL and MEALIE_API_TOKEN environment variables."
+
+    try:
+        result = await mealie_service.create_meal_plan(
+            date=date,
+            entry_type=entry_type,
+            recipe_slug=recipe_slug or None,
+            title=title or None,
+            note=note or None,
+        )
+        name = result.get("recipe_name") or result.get("title") or "meal"
+        return f"Added {result['entry_type']} to {result['date']}: {name}"
+    except Exception as e:
+        return f"Error creating meal plan: {str(e)}"
 
 
 @tool
@@ -796,6 +1022,16 @@ if ynab_enabled:
             ynab_search_transactions,
             ynab_category_spending,
             ynab_insights,
+        ]
+    )
+if mealie_enabled:
+    tools.extend(
+        [
+            mealie_todays_meals,
+            mealie_meal_plans,
+            mealie_get_recipe,
+            mealie_shopping_lists,
+            mealie_create_meal_plan,
         ]
     )
 if obsidian_enabled:
