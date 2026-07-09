@@ -147,3 +147,52 @@ class SimbaKitService:
                 lines.append(f"- {pet} {event_type} at {time}{duration}")
 
         return "\n".join(lines)
+
+    async def get_drinking_events(
+        self, pet_name: Optional[str] = None, days: Optional[int] = None
+    ) -> str:
+        """Get water fountain drinking activity events and stats."""
+        params: dict[str, str] = {}
+        if pet_name:
+            params["pet"] = pet_name
+        if days:
+            params["days"] = str(days)
+
+        data = await self._get("/api/pets/drinking-events", params=params or None)
+        events = data.get("events", [])
+        stats = data.get("stats", {})
+
+        if not events and not stats.get("total_drinks"):
+            return "No water fountain activity found."
+
+        lines = [
+            f"Water Fountain Activity ({stats.get('total_drinks', 0)} drinking sessions):",
+        ]
+
+        avg_duration = stats.get("avg_duration", 0)
+        if avg_duration:
+            lines.append(f"- Average drink duration: {avg_duration:.0f}s")
+
+        detections = stats.get("detections", 0)
+        if detections:
+            lines.append(f"- Camera detections (visits without drinking): {detections}")
+
+        per_pet = stats.get("per_pet", [])
+        if len(per_pet) > 1:
+            lines.append("- By pet:")
+            for p in per_pet:
+                lines.append(f"  - {p['pet_name']}: {p['drinks']} drinks")
+
+        # Recent events
+        if events:
+            lines.append("\nRecent events:")
+            for e in events[:5]:
+                pet = e.get("pet_name", "Unknown")
+                time = e.get("recorded_at", "N/A")
+                if e.get("record_type") == "drink_over":
+                    duration = f" for {e['duration_s']}s" if e.get("duration_s") else ""
+                    lines.append(f"- {pet} drank at {time}{duration}")
+                else:
+                    lines.append(f"- {pet} visited the fountain at {time}")
+
+        return "\n".join(lines)

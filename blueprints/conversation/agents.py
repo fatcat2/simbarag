@@ -1005,6 +1005,35 @@ async def simbakit_litter_activity(pet_name: str = "", days: int = 7) -> str:
         return f"Error fetching litter activity: {str(e)}"
 
 
+@tool
+async def simbakit_drinking_activity(pet_name: str = "", days: int = 7) -> str:
+    """Get water fountain drinking activity from the PetKit smart water fountain.
+
+    Use this tool when the user asks about:
+    - How much water Simba is drinking or hydration
+    - Water fountain usage or visits
+    - Drinking habits, frequency, or trends
+    - Recent drinking sessions
+
+    Args:
+        pet_name: Name of the pet to filter by (optional, defaults to all pets)
+        days: Number of days of history to retrieve (default 7)
+
+    Returns:
+        Drinking session statistics and recent fountain events.
+    """
+    if not simbakit_enabled:
+        return "SimbaKit integration is not configured. Please set SIMBAKIT_URL environment variable."
+
+    try:
+        return await simbakit_service.get_drinking_events(
+            pet_name=pet_name or None,
+            days=days,
+        )
+    except Exception as e:
+        return f"Error fetching drinking activity: {str(e)}"
+
+
 # Create tools list based on what's available
 tools = [get_current_date, simba_search, web_search, save_user_memory]
 if simbakit_enabled:
@@ -1013,6 +1042,7 @@ if simbakit_enabled:
             simbakit_device_status,
             simbakit_weight_history,
             simbakit_litter_activity,
+            simbakit_drinking_activity,
         ]
     )
 if ynab_enabled:

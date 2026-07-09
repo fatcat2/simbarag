@@ -86,6 +86,26 @@ CREATE INDEX IF NOT EXISTS idx_litter_events_time
 
 CREATE INDEX IF NOT EXISTS idx_litter_events_pet
     ON litter_events(pet_name, recorded_at);
+
+CREATE TABLE IF NOT EXISTS drinking_events (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id       TEXT NOT NULL,
+    event_id        TEXT UNIQUE,
+    pet_name        TEXT,
+    pet_id          TEXT,
+    recorded_at     TEXT NOT NULL,
+    polled_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    record_type     TEXT,
+    duration_s      INTEGER,
+    stay_time_s     INTEGER,
+    FOREIGN KEY (device_id) REFERENCES devices(device_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_drinking_events_time
+    ON drinking_events(recorded_at);
+
+CREATE INDEX IF NOT EXISTS idx_drinking_events_pet
+    ON drinking_events(pet_name, recorded_at);
 """
 
 _UPSERT_DEVICE = """
@@ -312,10 +332,102 @@ class Database:
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
+    async def insert_drinking_events(self, events: list[dict]) -> None:
+        assert self._conn is not None
+        if not events:
+            return
+        await self._conn.executemany(
+            """INSERT OR IGNORE INTO drinking_events
+               (device_id, event_id, pet_name, pet_id, recorded_at,
+                record_type, duration_s, stay_time_s)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    e["device_id"],
+                    e.get("event_id"),
+                    e.get("pet_name"),
+                    e.get("pet_id"),
+                    e["recorded_at"],
+                    e.get("record_type"),
+                    e.get("duration_s"),
+                    e.get("stay_time_s"),
+                )
+                for e in events
+            ],
+        )
+        await self._conn.commit()
+
+    async def get_drinking_events(
+        self, pet_name: str | None = None, days: int = 7
+    ) -> list[dict]:
+        assert self._conn is not None
+        self._conn.row_factory = aiosqlite.Row
+        if pet_name:
+            cursor = await self._conn.execute(
+                """SELECT * FROM drinking_events
+                   WHERE pet_name = ? AND recorded_at >= datetime('now', ?)
+                   ORDER BY recorded_at DESC""",
+                (pet_name, f"-{days} days"),
+            )
+        else:
+            cursor = await self._conn.execute(
+                """SELECT * FROM drinking_events
+                   WHERE recorded_at >= datetime('now', ?)
+                   ORDER BY recorded_at DESC""",
+                (f"-{days} days",),
+            )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_drinking_stats(
+        self, pet_name: str | None = None, days: int = 7
+    ) -> dict:
+        assert self._conn is not None
+        where = "WHERE recorded_at >= datetime('now', ?)"
+        params: list = [f"-{days} days"]
+        if pet_name:
+            where += " AND pet_name = ?"
+            params.append(pet_name)
+        cursor = await self._conn.execute(
+            f"""SELECT
+                SUM(CASE WHEN record_type = 'drink_over' THEN 1 ELSE 0 END) as drink_count,
+                SUM(CASE WHEN record_type = 'pet_detect' THEN 1 ELSE 0 END) as detect_count,
+                AVG(CASE WHEN record_type = 'drink_over' THEN duration_s END) as avg_duration,
+                AVG(CASE WHEN record_type = 'drink_over' THEN stay_time_s END) as avg_stay_time
+            FROM drinking_events {where}""",
+            params,
+        )
+        row = await cursor.fetchone()
+        cursor = await self._conn.execute(
+            f"""SELECT pet_name, COUNT(*) as drinks, AVG(duration_s) as avg_duration
+                FROM drinking_events {where} AND record_type = 'drink_over'
+                    AND pet_name IS NOT NULL
+                GROUP BY pet_name ORDER BY drinks DESC""",
+            params,
+        )
+        per_pet = [
+            {
+                "pet_name": r[0],
+                "drinks": r[1],
+                "avg_duration": round(r[2], 1) if r[2] else 0,
+            }
+            for r in await cursor.fetchall()
+        ]
+        return {
+            "total_drinks": row[0] or 0,
+            "detections": row[1] or 0,
+            "avg_duration": round(row[2], 1) if row[2] else 0,
+            "avg_stay_time": round(row[3], 1) if row[3] else 0,
+            "per_pet": per_pet,
+        }
+
     async def get_pet_names(self) -> list[str]:
         assert self._conn is not None
         cursor = await self._conn.execute(
-            "SELECT DISTINCT pet_name FROM pet_weights WHERE pet_name IS NOT NULL ORDER BY pet_name"
+            """SELECT DISTINCT pet_name FROM pet_weights WHERE pet_name IS NOT NULL
+               UNION
+               SELECT DISTINCT pet_name FROM drinking_events WHERE pet_name IS NOT NULL
+               ORDER BY pet_name"""
         )
         rows = await cursor.fetchall()
         return [r[0] for r in rows]

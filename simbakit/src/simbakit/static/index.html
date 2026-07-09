@@ -352,6 +352,12 @@
 
     <div class="section-title">Recent Events</div>
     <div class="table-wrap" id="activity-events"></div>
+
+    <div class="section-title" style="margin-top:24px">Fountain Activity</div>
+    <div class="weight-stats" id="drinking-stats"></div>
+
+    <div class="section-title">Recent Fountain Events</div>
+    <div class="table-wrap" id="drinking-events"></div>
   </div>
 </div>
 
@@ -819,6 +825,7 @@ async function loadActivityData() {
 
   renderActivityStats(data.stats);
   renderActivityEvents(data.events);
+  loadDrinkingData();
 }
 
 function renderActivityStats(stats) {
@@ -867,6 +874,70 @@ function renderActivityEvents(events) {
         <div class="event-details">
           <div class="event-title">${esc(e.pet_name || 'Unknown')} ${label}${shitW}</div>
           <div class="event-sub">Duration: ${duration}${weight}</div>
+        </div>
+        <div class="event-time">${timeAgo(e.recorded_at)}<br><span style="font-size:11px">${esc(e.recorded_at)}</span></div>
+      </div>`;
+  }).join('');
+}
+
+// --- Fountain Activity ---
+async function loadDrinkingData() {
+  const pet = state.activityPet || '';
+  const days = state.activityDays;
+  const res = await fetch(`/api/pets/drinking-events?pet=${encodeURIComponent(pet)}&days=${days}`);
+  const data = await res.json();
+  renderDrinkingStats(data.stats);
+  renderDrinkingEvents(data.events);
+}
+
+function renderDrinkingStats(stats) {
+  const el = document.getElementById('drinking-stats');
+  if (!stats.total_drinks && !stats.detections) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px;width:100%"><p>No fountain events recorded yet.</p></div>';
+    return;
+  }
+  const perPet = (stats.per_pet || [])
+    .map(p => `${esc(p.pet_name)}: ${p.drinks}`)
+    .join(' &middot; ');
+  el.innerHTML = `
+    <div class="weight-stat">
+      <div class="weight-stat-label">Drinking Sessions</div>
+      <div class="weight-stat-value">${stats.total_drinks}</div>
+      <div class="weight-stat-sub">${perPet}</div>
+    </div>
+    <div class="weight-stat">
+      <div class="weight-stat-label">Avg Drink Duration</div>
+      <div class="weight-stat-value">${formatDuration(stats.avg_duration)}</div>
+    </div>
+    <div class="weight-stat">
+      <div class="weight-stat-label">Avg Time at Fountain</div>
+      <div class="weight-stat-value">${formatDuration(stats.avg_stay_time)}</div>
+    </div>
+    <div class="weight-stat">
+      <div class="weight-stat-label">Camera Detections</div>
+      <div class="weight-stat-value">${stats.detections}</div>
+    </div>
+  `;
+}
+
+function renderDrinkingEvents(events) {
+  const el = document.getElementById('drinking-events');
+  if (!events.length) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text2)">No events</div>';
+    return;
+  }
+  el.innerHTML = events.slice(0, 100).map(e => {
+    const isDrink = e.record_type === 'drink_over';
+    const icon = isDrink ? '&#x1f4a7;' : '&#x1f440;';
+    const label = isDrink ? 'Drank' : 'Visited fountain';
+    const duration = e.duration_s ? formatDuration(e.duration_s) : '--';
+    const stay = e.stay_time_s ? ` &middot; Stayed ${formatDuration(e.stay_time_s)}` : '';
+    return `
+      <div class="event-row" style="border-bottom:1px solid var(--border)">
+        <div class="event-icon pee">${icon}</div>
+        <div class="event-details">
+          <div class="event-title">${esc(e.pet_name || 'Unknown')} ${label}</div>
+          <div class="event-sub">Duration: ${duration}${stay}</div>
         </div>
         <div class="event-time">${timeAgo(e.recorded_at)}<br><span style="font-size:11px">${esc(e.recorded_at)}</span></div>
       </div>`;
