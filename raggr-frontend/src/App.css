@@ -117,6 +117,29 @@ body {
 .markdown-content strong { font-weight: 700; }
 .markdown-content em { font-style: italic; }
 
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  font-size: 0.9em;
+  display: block;
+  overflow-x: auto;
+}
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--color-sand-light);
+  padding: 0.4em 0.6em;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown-content thead th {
+  background: var(--color-sand-light);
+  font-weight: 700;
+}
+.markdown-content tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--color-sand-light) 35%, transparent);
+}
+
 /* ── Animations ─────────────────────────────────────── */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(10px); }

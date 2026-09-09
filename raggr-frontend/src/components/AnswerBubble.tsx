@@ -1,5 +1,6 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "../lib/utils";
 
 type AnswerBubbleProps = {
@@ -29,7 +30,7 @@ export const AnswerBubble = React.memo(({ text, loading }: AnswerBubbleProps) =>
             </div>
           ) : (
             <div className="markdown-content text-sm leading-relaxed text-charcoal">
-              <ReactMarkdown>{text}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
             </div>
           )}
         </div>
