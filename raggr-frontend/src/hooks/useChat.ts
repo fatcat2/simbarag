@@ -46,6 +46,7 @@ export function useChat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -79,6 +80,7 @@ export function useChat({
 
       const imageFile = pendingImage;
 
+      setError(null);
       updateMessages((prev) => prev.concat([{ text: query, speaker: "user" }]));
       setPendingImage(null);
       setIsLoading(true);
@@ -134,21 +136,26 @@ export function useChat({
               );
             } else if (event.type === "error") {
               console.error("Stream error:", event.message);
+              if (isMountedRef.current) {
+                setError("Simba ran into a problem answering that.");
+              }
             }
           },
           abortController.signal,
           imageKey,
         );
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          console.log("Request was aborted");
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // User cancelled — not an error to surface.
         } else {
-          console.error("Failed to send query:", error);
+          console.error("Failed to send query:", err);
           if (
-            error instanceof Error &&
-            error.message.includes("Session expired")
+            err instanceof Error &&
+            err.message.includes("Session expired")
           ) {
             onSessionExpired();
+          } else if (isMountedRef.current) {
+            setError("Couldn't reach Simba. Check your connection and try again.");
           }
         }
       } finally {
@@ -172,6 +179,13 @@ export function useChat({
     ],
   );
 
+  const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsLoading(false);
+  }, []);
+
+  const clearError = useCallback(() => setError(null), []);
+
   return {
     messages,
     setMessages: updateMessages,
@@ -179,5 +193,8 @@ export function useChat({
     pendingImage,
     setPendingImage,
     sendMessage,
+    stopGeneration,
+    error,
+    clearError,
   };
 }
