@@ -22,6 +22,7 @@ def create_app(db: Database) -> web.Application:
     app.router.add_get("/api/devices/{device_id}/alerts", api_device_alerts)
     app.router.add_get("/api/pets/weights", api_pet_weights)
     app.router.add_get("/api/pets/litter-events", api_litter_events)
+    app.router.add_get("/api/pets/drinking-events", api_drinking_events)
     return app
 
 
@@ -131,5 +132,15 @@ async def api_litter_events(request: web.Request) -> web.Response:
     days = min(int(request.query.get("days", "7")), 90)
     events = await db.get_litter_events(pet_name=pet_name, days=days)
     stats = await db.get_litter_stats(pet_name=pet_name, days=days)
+    pet_names = await db.get_pet_names()
+    return web.json_response({"pet_names": pet_names, "events": events, "stats": stats})
+
+
+async def api_drinking_events(request: web.Request) -> web.Response:
+    db: Database = request.app["db"]
+    pet_name = request.query.get("pet")
+    days = min(int(request.query.get("days", "7")), 90)
+    events = await db.get_drinking_events(pet_name=pet_name, days=days)
+    stats = await db.get_drinking_stats(pet_name=pet_name, days=days)
     pet_names = await db.get_pet_names()
     return web.json_response({"pet_names": pet_names, "events": events, "stats": stats})
