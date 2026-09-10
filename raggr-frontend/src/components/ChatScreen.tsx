@@ -274,7 +274,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto px-4 py-6">
-              <div className="max-w-2xl mx-auto flex flex-col gap-3">
+              <div className="max-w-3xl mx-auto flex flex-col gap-6">
                 {showConversations && (
                   <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
                     <ConversationList
@@ -317,7 +317,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
             </div>
 
             <footer className="border-t border-sand-light/40 bg-cream">
-              <div className="max-w-2xl mx-auto px-4 py-3">
+              <div className="max-w-3xl mx-auto px-4 py-3">
                 <MessageInput
                   query={query}
                   handleQueryChange={handleQueryChange}
