@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { LogOut, Shield, Clock, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
@@ -18,6 +19,7 @@ type ChatScreenProps = {
 };
 
 export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [simbaMode, setSimbaMode] = useState(false);
   const [showConversations, setShowConversations] = useState(false);
@@ -39,7 +41,6 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
   const {
     conversations,
     selectedConversation,
-    selectConversation,
     createConversation,
     renameConversation,
     deleteConversation,
@@ -50,8 +51,8 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
 
   const {
     messages,
-    setMessages,
     isLoading,
+    messagesLoading,
     pendingImage,
     setPendingImage,
     sendMessage,
@@ -59,7 +60,6 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
     error,
     clearError,
   } = useChat({
-    selectedConversation,
     createConversation,
     refreshConversations,
     onSessionExpired,
@@ -70,18 +70,17 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
   isLoadingRef.current = isLoading;
 
   const handleSelectConversation = useCallback(
-    async (conversation: { title: string; id: string }) => {
+    (conversation: { title: string; id: string }) => {
       setShowConversations(false);
-      const loaded = await selectConversation(conversation);
-      setMessages(loaded);
+      navigate(`/c/${conversation.id}`);
     },
-    [selectConversation, setMessages],
+    [navigate],
   );
 
-  const handleCreateNewConversation = useCallback(async () => {
-    await createConversation();
-    setMessages([]);
-  }, [createConversation, setMessages]);
+  const handleCreateNewConversation = useCallback(() => {
+    setShowConversations(false);
+    navigate("/");
+  }, [navigate]);
 
   const handleQuestionSubmit = useCallback(() => {
     sendMessage(query, simbaMode);
@@ -102,11 +101,8 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
   const handleToggleSimbaMode = useCallback(() => setSimbaMode((v) => !v), []);
 
   const handleDeleteConversation = useCallback(
-    async (id: string) => {
-      const wasSelected = await deleteConversation(id);
-      if (wasSelected) setMessages([]);
-    },
-    [deleteConversation, setMessages],
+    (id: string) => deleteConversation(id),
+    [deleteConversation],
   );
 
   const handleImageSelect = useCallback((file: File) => setPendingImage(file), [setPendingImage]);
@@ -234,7 +230,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
           </div>
         </header>
 
-        {messages.length === 0 ? (
+        {messages.length === 0 && !messagesLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
             {showConversations && (
               <div className="md:hidden w-full max-w-2xl bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
@@ -299,7 +295,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                   return <QuestionBubble key={index} text={msg.text} image_key={msg.image_key} />;
                 })}
 
-                {isLoading && <AnswerBubble text="" loading={true} />}
+                {(isLoading || messagesLoading) && <AnswerBubble text="" loading={true} />}
 
                 {error && (
                   <div className="flex justify-center message-enter">

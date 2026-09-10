@@ -1,3 +1,4 @@
+import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatScreen } from "./components/ChatScreen";
@@ -23,14 +24,22 @@ const AppContainer = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return <LoginScreen setAuthenticated={setAuthenticated} />;
+  }
+
   return (
-    <>
-      {isAuthenticated ? (
-        <ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />
-      ) : (
-        <LoginScreen setAuthenticated={setAuthenticated} />
-      )}
-    </>
+    <Routes>
+      <Route
+        path="/"
+        element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
+      />
+      <Route
+        path="/c/:conversationId"
+        element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 
