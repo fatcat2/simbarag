@@ -37,7 +37,7 @@ export function useConversations() {
         const fetched = await conversationService.getConversation(
           conversation.id,
         );
-        return fetched.messages.map((m) => ({
+        return (fetched.messages ?? []).map((m) => ({
           text: m.text,
           speaker: m.speaker,
           image_key: m.image_key,
@@ -58,12 +58,54 @@ export function useConversations() {
     return conversation;
   }, []);
 
+  const renameConversation = useCallback(
+    async (id: string, title: string): Promise<void> => {
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      // Optimistic update, roll back on failure
+      const previous = conversations;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c)),
+      );
+      setSelectedConversation((prev) =>
+        prev?.id === id ? { ...prev, title: trimmed } : prev,
+      );
+      try {
+        await conversationService.renameConversation(id, trimmed);
+      } catch (err) {
+        console.error("Failed to rename conversation:", err);
+        setConversations(previous);
+      }
+    },
+    [conversations],
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string): Promise<boolean> => {
+      const previous = conversations;
+      const wasSelected = selectedConversation?.id === id;
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (wasSelected) setSelectedConversation(null);
+      try {
+        await conversationService.deleteConversation(id);
+        return wasSelected;
+      } catch (err) {
+        console.error("Failed to delete conversation:", err);
+        setConversations(previous);
+        return false;
+      }
+    },
+    [conversations, selectedConversation],
+  );
+
   return {
     conversations,
     selectedConversation,
     setSelectedConversation,
     selectConversation,
     createConversation,
+    renameConversation,
+    deleteConversation,
     refreshConversations,
   };
 }

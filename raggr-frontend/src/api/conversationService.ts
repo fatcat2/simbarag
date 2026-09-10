@@ -25,16 +25,8 @@ interface Conversation {
   user_id?: string;
 }
 
-interface QueryRequest {
-  query: string;
-}
-
 interface QueryResponse {
   response: string;
-}
-
-interface CreateConversationRequest {
-  user_id: string;
 }
 
 class ConversationService {
@@ -105,6 +97,38 @@ class ConversationService {
     }
 
     return await response.json();
+  }
+
+  async renameConversation(
+    conversationId: string,
+    name: string,
+  ): Promise<Conversation> {
+    const response = await userService.fetchWithRefreshToken(
+      `${this.conversationBaseUrl}/${conversationId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to rename conversation");
+    }
+
+    return await response.json();
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    const response = await userService.fetchWithRefreshToken(
+      `${this.conversationBaseUrl}/${conversationId}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to delete conversation");
+    }
   }
 
   async getAllConversations(): Promise<Conversation[]> {

@@ -18,7 +18,6 @@ from utils.s3_client import upload_image as s3_upload_image
 from .agents import main_agent
 from .logic import (
     add_message_to_conversation,
-    get_conversation_by_id,
 )
 from .memory import get_memories_for_user
 from .models import (
@@ -33,6 +32,11 @@ conversation_blueprint = Blueprint(
 )
 
 _SYSTEM_PROMPT = SIMBA_SYSTEM_PROMPT
+
+
+async def _get_owned_conversation(conversation_id, user_id) -> Conversation | None:
+    """Fetch a conversation only if it belongs to the given user."""
+    return await Conversation.get_or_none(id=conversation_id, user_id=user_id)
 
 
 async def _build_system_prompt_with_memories(user_id: str) -> str:
@@ -82,7 +86,9 @@ async def query():
     data = await request.get_json()
     query = data.get("query")
     conversation_id = data.get("conversation_id")
-    conversation = await get_conversation_by_id(conversation_id)
+    conversation = await _get_owned_conversation(conversation_id, current_user_uuid)
+    if conversation is None:
+        return jsonify({"error": "conversation not found"}), 404
     await conversation.fetch_related("messages")
     await add_message_to_conversation(
         conversation=conversation,
@@ -159,7 +165,9 @@ async def stream_query():
     query_text = data.get("query")
     conversation_id = data.get("conversation_id")
     image_key = data.get("image_key")
-    conversation = await get_conversation_by_id(conversation_id)
+    conversation = await _get_owned_conversation(conversation_id, current_user_uuid)
+    if conversation is None:
+        return jsonify({"error": "conversation not found"}), 404
     await conversation.fetch_related("messages")
     await add_message_to_conversation(
         conversation=conversation,
@@ -243,7 +251,10 @@ async def stream_query():
 @conversation_blueprint.route("/<conversation_id>")
 @jwt_refresh_token_required
 async def get_conversation(conversation_id: str):
-    conversation = await Conversation.get(id=conversation_id)
+    user_uuid = get_jwt_identity()
+    conversation = await _get_owned_conversation(conversation_id, user_uuid)
+    if conversation is None:
+        return jsonify({"error": "conversation not found"}), 404
     await conversation.fetch_related("messages")
 
     # Manually serialize the conversation with messages
@@ -292,3 +303,35 @@ async def get_all_conversations():
     serialized_conversations = await PydListConversation.from_queryset(conversations)
 
     return jsonify(serialized_conversations.model_dump())
+
+
+@conversation_blueprint.patch("/<conversation_id>")
+@jwt_refresh_token_required
+async def rename_conversation(conversation_id: str):
+    user_uuid = get_jwt_identity()
+    body = await request.get_json()
+    name = (body or {}).get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+
+    conversation = await _get_owned_conversation(conversation_id, user_uuid)
+    if conversation is None:
+        return jsonify({"error": "conversation not found"}), 404
+
+    conversation.name = name[:255]
+    await conversation.save()
+
+    serialized_conversation = await PydConversation.from_tortoise_orm(conversation)
+    return jsonify(serialized_conversation.model_dump())
+
+
+@conversation_blueprint.delete("/<conversation_id>")
+@jwt_refresh_token_required
+async def delete_conversation(conversation_id: str):
+    user_uuid = get_jwt_identity()
+    conversation = await _get_owned_conversation(conversation_id, user_uuid)
+    if conversation is None:
+        return jsonify({"error": "conversation not found"}), 404
+
+    await conversation.delete()
+    return jsonify({"success": True})

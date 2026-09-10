@@ -41,6 +41,8 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
     selectedConversation,
     selectConversation,
     createConversation,
+    renameConversation,
+    deleteConversation,
     refreshConversations,
   } = useConversations();
 
@@ -53,6 +55,9 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
     pendingImage,
     setPendingImage,
     sendMessage,
+    stopGeneration,
+    error,
+    clearError,
   } = useChat({
     selectedConversation,
     createConversation,
@@ -87,13 +92,22 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
     setQuery(event.target.value);
   }, []);
 
-  const handleKeyDown = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const kev = event as unknown as React.KeyboardEvent<HTMLTextAreaElement>;
-    if (kev.key === "Enter" && !kev.shiftKey) {
-      kev.preventDefault();
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       handleQuestionSubmit();
     }
   }, [handleQuestionSubmit]);
+
+  const handleToggleSimbaMode = useCallback(() => setSimbaMode((v) => !v), []);
+
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      const wasSelected = await deleteConversation(id);
+      if (wasSelected) setMessages([]);
+    },
+    [deleteConversation, setMessages],
+  );
 
   const handleImageSelect = useCallback((file: File) => setPendingImage(file), [setPendingImage]);
   const handleClearImage = useCallback(() => setPendingImage(null), [setPendingImage]);
@@ -153,6 +167,8 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                 conversations={conversations}
                 onCreateNewConversation={handleCreateNewConversation}
                 onSelectConversation={handleSelectConversation}
+                onRenameConversation={renameConversation}
+                onDeleteConversation={handleDeleteConversation}
                 selectedId={selectedConversation?.id}
               />
             </div>
@@ -226,6 +242,8 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                   conversations={conversations}
                   onCreateNewConversation={handleCreateNewConversation}
                   onSelectConversation={handleSelectConversation}
+                  onRenameConversation={renameConversation}
+                  onDeleteConversation={handleDeleteConversation}
                   selectedId={selectedConversation?.id}
                   variant="light"
                 />
@@ -247,8 +265,10 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                 handleQueryChange={handleQueryChange}
                 handleKeyDown={handleKeyDown}
                 handleQuestionSubmit={handleQuestionSubmit}
-                setSimbaMode={setSimbaMode}
+                simbaMode={simbaMode}
+                onToggleSimbaMode={handleToggleSimbaMode}
                 isLoading={isLoading}
+                onStop={stopGeneration}
                 pendingImage={pendingImage}
                 onImageSelect={handleImageSelect}
                 onClearImage={handleClearImage}
@@ -280,6 +300,22 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                 })}
 
                 {isLoading && <AnswerBubble text="" loading={true} />}
+
+                {error && (
+                  <div className="flex justify-center message-enter">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-xs text-red-600">
+                      <span>{error}</span>
+                      <button
+                        onClick={clearError}
+                        className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                        aria-label="Dismiss error"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -291,8 +327,10 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                   handleQueryChange={handleQueryChange}
                   handleKeyDown={handleKeyDown}
                   handleQuestionSubmit={handleQuestionSubmit}
-                  setSimbaMode={setSimbaMode}
+                  simbaMode={simbaMode}
+                  onToggleSimbaMode={handleToggleSimbaMode}
                   isLoading={isLoading}
+                  onStop={stopGeneration}
                   pendingImage={pendingImage}
                   onImageSelect={handleImageSelect}
                   onClearImage={handleClearImage}
