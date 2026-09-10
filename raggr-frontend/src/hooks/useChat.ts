@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { conversationService } from "../api/conversationService";
 import type { Conversation } from "./useConversations";
 
@@ -29,7 +30,6 @@ const TOOL_MESSAGES: Record<string, string> = {
 const simbaAnswers = ["meow.", "hiss...", "purrrrrr", "yowOWROWWowowr"];
 
 type UseChatOptions = {
-  selectedConversation: Conversation | null;
   createConversation: () => Promise<Conversation>;
   refreshConversations: () => Promise<void>;
   onSessionExpired: () => void;
@@ -37,19 +37,23 @@ type UseChatOptions = {
 };
 
 export function useChat({
-  selectedConversation,
   createConversation,
   refreshConversations,
   onSessionExpired,
   scrollToBottom,
 }: UseChatOptions) {
+  const { conversationId } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Set to a conversation id we just created locally, so the route-change
+  // loader below doesn't wipe the optimistic message + in-flight stream.
+  const skipLoadForIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -67,15 +71,65 @@ export function useChat({
     [scrollToBottom],
   );
 
+  // Load messages whenever the active conversation (URL) changes. Clearing
+  // immediately makes the switch feel instant instead of lingering on the old
+  // thread until the fetch resolves.
+  useEffect(() => {
+    // Skip only for a conversation we just created locally (its optimistic
+    // message + stream are already in state). Guard against the null sentinel
+    // colliding with the "no conversation" (home) route.
+    if (
+      skipLoadForIdRef.current !== null &&
+      skipLoadForIdRef.current === conversationId
+    ) {
+      skipLoadForIdRef.current = null;
+      return;
+    }
+    if (!conversationId) {
+      setMessages([]);
+      setMessagesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMessages([]);
+    setMessagesLoading(true);
+    (async () => {
+      try {
+        const fetched = await conversationService.getConversation(conversationId);
+        if (cancelled) return;
+        setMessages(
+          (fetched.messages ?? []).map((m) => ({
+            text: m.text,
+            speaker: m.speaker,
+            image_key: m.image_key,
+          })),
+        );
+        scrollToBottom();
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load messages:", err);
+          setMessages([]);
+        }
+      } finally {
+        if (!cancelled) setMessagesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, scrollToBottom]);
+
   const sendMessage = useCallback(
     async (query: string, simbaMode: boolean) => {
       if ((!query.trim() && !pendingImage) || isLoading) return;
 
-      let activeConversation = selectedConversation;
-      let createdNew = false;
-      if (!activeConversation) {
-        activeConversation = await createConversation();
-        createdNew = true;
+      let activeId = conversationId;
+      const createdNew = !activeId;
+      if (!activeId) {
+        const created = await createConversation();
+        // Prevent the route-change loader from clearing what we're about to add.
+        skipLoadForIdRef.current = created.id;
+        activeId = created.id;
       }
 
       const imageFile = pendingImage;
@@ -103,7 +157,7 @@ export function useChat({
         if (imageFile) {
           const uploadResult = await conversationService.uploadImage(
             imageFile,
-            activeConversation.id,
+            activeId,
           );
           imageKey = uploadResult.image_key;
 
@@ -121,7 +175,7 @@ export function useChat({
 
         await conversationService.streamQuery(
           query,
-          activeConversation.id,
+          activeId,
           (event) => {
             if (!isMountedRef.current) return;
             if (event.type === "tool_start") {
@@ -171,7 +225,7 @@ export function useChat({
     [
       pendingImage,
       isLoading,
-      selectedConversation,
+      conversationId,
       createConversation,
       refreshConversations,
       onSessionExpired,
@@ -190,6 +244,7 @@ export function useChat({
     messages,
     setMessages: updateMessages,
     isLoading,
+    messagesLoading,
     pendingImage,
     setPendingImage,
     sendMessage,
