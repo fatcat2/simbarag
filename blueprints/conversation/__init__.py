@@ -199,6 +199,7 @@ async def stream_query():
 
     async def event_generator():
         final_message = None
+        streamed = ""
         try:
             async for event in main_agent.astream_events(
                 payload, version="v2", config=agent_config
@@ -210,6 +211,13 @@ async def stream_query():
 
                 elif event_type == "on_tool_end":
                     yield f"data: {json.dumps({'type': 'tool_end', 'tool': event['name']})}\n\n"
+
+                elif event_type == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk")
+                    content = getattr(chunk, "content", None)
+                    if isinstance(content, str) and content:
+                        streamed += content
+                        yield f"data: {json.dumps({'type': 'content', 'delta': content})}\n\n"
 
                 elif event_type == "on_chain_end":
                     output = event.get("data", {}).get("output")
@@ -224,6 +232,7 @@ async def stream_query():
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
+        final_message = final_message or streamed
         if final_message:
             await add_message_to_conversation(
                 conversation=conversation,

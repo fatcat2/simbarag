@@ -52,6 +52,7 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
   const {
     messages,
     isLoading,
+    streaming,
     messagesLoading,
     pendingImage,
     setPendingImage,
@@ -247,7 +248,9 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
                   return <QuestionBubble key={index} text={msg.text} image_key={msg.image_key} />;
                 })}
 
-                {(isLoading || messagesLoading) && <AnswerBubble text="" loading={true} />}
+                {((isLoading && !streaming) || messagesLoading) && (
+                  <AnswerBubble text="" loading={true} />
+                )}
 
                 {error && (
                   <div className="flex justify-center message-enter">

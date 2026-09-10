@@ -48,8 +48,12 @@ export function useChat({
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(false);
 
   const isMountedRef = useRef(true);
+  // True once tokens for the current assistant reply have started arriving, so
+  // new content appends to the live bubble instead of creating another one.
+  const streamingActiveRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Set to a conversation id we just created locally, so the route-change
   // loader below doesn't wipe the optimistic message + in-flight stream.
@@ -135,6 +139,8 @@ export function useChat({
       const imageFile = pendingImage;
 
       setError(null);
+      streamingActiveRef.current = false;
+      setStreaming(false);
       updateMessages((prev) => prev.concat([{ text: query, speaker: "user" }]));
       setPendingImage(null);
       setIsLoading(true);
@@ -179,15 +185,49 @@ export function useChat({
           (event) => {
             if (!isMountedRef.current) return;
             if (event.type === "tool_start") {
+              // Any text after a tool call belongs in a fresh bubble.
+              streamingActiveRef.current = false;
               const friendly =
                 TOOL_MESSAGES[event.tool] ?? `Using ${event.tool}...`;
               updateMessages((prev) =>
                 prev.concat([{ text: friendly, speaker: "tool" }]),
               );
+            } else if (event.type === "content") {
+              if (streamingActiveRef.current) {
+                updateMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = {
+                    ...last,
+                    text: last.text + event.delta,
+                  };
+                  return updated;
+                });
+              } else {
+                streamingActiveRef.current = true;
+                setStreaming(true);
+                updateMessages((prev) =>
+                  prev.concat([{ text: event.delta, speaker: "simba" }]),
+                );
+              }
             } else if (event.type === "response") {
-              updateMessages((prev) =>
-                prev.concat([{ text: event.message, speaker: "simba" }]),
-              );
+              // Reconcile the streamed bubble with the authoritative (persisted)
+              // text; if nothing streamed, append it as a new message.
+              if (streamingActiveRef.current) {
+                updateMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    ...updated[updated.length - 1],
+                    text: event.message,
+                  };
+                  return updated;
+                });
+                streamingActiveRef.current = false;
+              } else {
+                updateMessages((prev) =>
+                  prev.concat([{ text: event.message, speaker: "simba" }]),
+                );
+              }
             } else if (event.type === "error") {
               console.error("Stream error:", event.message);
               if (isMountedRef.current) {
@@ -215,10 +255,12 @@ export function useChat({
       } finally {
         if (isMountedRef.current) {
           setIsLoading(false);
+          setStreaming(false);
           if (createdNew) {
             refreshConversations();
           }
         }
+        streamingActiveRef.current = false;
         abortControllerRef.current = null;
       }
     },
@@ -244,6 +286,7 @@ export function useChat({
     messages,
     setMessages: updateMessages,
     isLoading,
+    streaming,
     messagesLoading,
     pendingImage,
     setPendingImage,

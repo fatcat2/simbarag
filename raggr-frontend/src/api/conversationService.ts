@@ -3,6 +3,7 @@ import { userService } from "./userService";
 export type SSEEvent =
   | { type: "tool_start"; tool: string }
   | { type: "tool_end"; tool: string }
+  | { type: "content"; delta: string }
   | { type: "response"; message: string }
   | { type: "error"; message: string };
 
