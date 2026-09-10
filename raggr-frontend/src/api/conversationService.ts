@@ -131,9 +131,19 @@ class ConversationService {
     }
   }
 
-  async getAllConversations(): Promise<Conversation[]> {
+  async getAllConversations(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+  }): Promise<Conversation[]> {
+    const search = new URLSearchParams();
+    if (params?.limit != null) search.set("limit", String(params.limit));
+    if (params?.offset != null) search.set("offset", String(params.offset));
+    if (params?.search) search.set("search", params.search);
+    const qs = search.toString();
+
     const response = await userService.fetchWithRefreshToken(
-      `${this.conversationBaseUrl}/`,
+      `${this.conversationBaseUrl}/${qs ? `?${qs}` : ""}`,
       {
         method: "GET",
       },

@@ -7,6 +7,10 @@ export type Conversation = {
   id: string;
 };
 
+// The sidebar/drawer only shows the most recent conversations; the full list
+// lives on the dedicated /conversations page.
+const SIDEBAR_LIMIT = 10;
+
 export function useConversations() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
@@ -14,7 +18,9 @@ export function useConversations() {
 
   const refreshConversations = useCallback(async () => {
     try {
-      const fetched = await conversationService.getAllConversations();
+      const fetched = await conversationService.getAllConversations({
+        limit: SIDEBAR_LIMIT,
+      });
       setConversations(fetched.map((c) => ({ id: c.id, title: c.name })));
     } catch (err) {
       console.error("Failed to load conversations:", err);

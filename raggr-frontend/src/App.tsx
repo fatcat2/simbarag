@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatScreen } from "./components/ChatScreen";
+import { ConversationsPage } from "./components/ConversationsPage";
 import { LoginScreen } from "./components/LoginScreen";
 import { useAuthCheck } from "./hooks/useAuthCheck";
 import catIcon from "./assets/cat.png";
@@ -38,6 +39,7 @@ const AppContainer = () => {
         path="/c/:conversationId"
         element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
       />
+      <Route path="/conversations" element={<ConversationsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

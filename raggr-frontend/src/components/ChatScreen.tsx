@@ -1,11 +1,11 @@
 import { useCallback, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Shield, Clock, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
+import { PanelLeftOpen, Menu, X } from "lucide-react";
 import { QuestionBubble } from "./QuestionBubble";
 import { AnswerBubble } from "./AnswerBubble";
 import { ToolBubble } from "./ToolBubble";
 import { MessageInput } from "./MessageInput";
-import { ConversationList } from "./ConversationList";
+import { SidebarContent } from "./SidebarContent";
 import { AdminPanel } from "./AdminPanel";
 import { ScheduledMessagesPanel } from "./ScheduledMessagesPanel";
 import { cn } from "../lib/utils";
@@ -114,6 +114,16 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
     setAuthenticated(false);
   };
 
+  const sidebarProps = {
+    conversations,
+    onCreateNewConversation: handleCreateNewConversation,
+    onSelectConversation: handleSelectConversation,
+    onRenameConversation: renameConversation,
+    onDeleteConversation: handleDeleteConversation,
+    selectedId: selectedConversation?.id,
+    isAdmin,
+  };
+
   return (
     <div className="h-screen h-[100dvh] flex flex-row bg-cream overflow-hidden">
       {/* Desktop Sidebar */}
@@ -139,66 +149,40 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
             />
           </div>
         ) : (
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
-              <div className="flex items-center gap-2.5">
-                <img src={catIcon} alt="Simba" className="w-12 h-12" />
-                <h2
-                  className="text-lg font-bold text-cream tracking-tight"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  asksimba
-                </h2>
-              </div>
-              <button
-                onClick={() => setSidebarCollapsed(true)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-cream/40 hover:text-cream hover:bg-white/10 transition-all cursor-pointer"
-              >
-                <PanelLeftClose size={15} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-2 py-3">
-              <ConversationList
-                conversations={conversations}
-                onCreateNewConversation={handleCreateNewConversation}
-                onSelectConversation={handleSelectConversation}
-                onRenameConversation={renameConversation}
-                onDeleteConversation={handleDeleteConversation}
-                selectedId={selectedConversation?.id}
-              />
-            </div>
-
-            <div className="px-2 pb-3 pt-2 border-t border-white/8 flex flex-col gap-0.5">
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => setShowAdminPanel(true)}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
-                  >
-                    <Shield size={14} />
-                    <span>Admin</span>
-                  </button>
-                  <button
-                    onClick={() => setShowScheduler(true)}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
-                  >
-                    <Clock size={14} />
-                    <span>Scheduler</span>
-                  </button>
-                </>
-              )}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-cream/50 hover:text-cream hover:bg-white/8 transition-all cursor-pointer"
-              >
-                <LogOut size={14} />
-                <span>Sign out</span>
-              </button>
-            </div>
-          </div>
+          <SidebarContent
+            {...sidebarProps}
+            onShowAdmin={() => setShowAdminPanel(true)}
+            onShowScheduler={() => setShowScheduler(true)}
+            onLogout={handleLogout}
+            onCollapse={() => setSidebarCollapsed(true)}
+          />
         )}
       </aside>
+
+      {/* Mobile drawer */}
+      {showConversations && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <aside className="w-72 max-w-[80%] h-full bg-sidebar-bg shadow-xl animate-drawer-in">
+            <SidebarContent
+              {...sidebarProps}
+              onShowAdmin={() => {
+                setShowConversations(false);
+                setShowAdminPanel(true);
+              }}
+              onShowScheduler={() => {
+                setShowConversations(false);
+                setShowScheduler(true);
+              }}
+              onLogout={handleLogout}
+              onCloseDrawer={() => setShowConversations(false)}
+            />
+          </aside>
+          <div
+            className="flex-1 bg-charcoal/40 backdrop-blur-sm"
+            onClick={() => setShowConversations(false)}
+          />
+        </div>
+      )}
 
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
       {showScheduler && <ScheduledMessagesPanel onClose={() => setShowScheduler(false)} />}
@@ -214,37 +198,17 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
               asksimba
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
-              onClick={() => setShowConversations((v) => !v)}
-            >
-              {showConversations ? <X size={16} /> : <Menu size={16} />}
-            </button>
-            <button
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
-              onClick={handleLogout}
-            >
-              <LogOut size={15} />
-            </button>
-          </div>
+          <button
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-warm-gray hover:text-charcoal hover:bg-cream-dark transition-all cursor-pointer"
+            onClick={() => setShowConversations(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={16} />
+          </button>
         </header>
 
         {messages.length === 0 && !messagesLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
-            {showConversations && (
-              <div className="md:hidden w-full max-w-2xl bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
-                <ConversationList
-                  conversations={conversations}
-                  onCreateNewConversation={handleCreateNewConversation}
-                  onSelectConversation={handleSelectConversation}
-                  onRenameConversation={renameConversation}
-                  onDeleteConversation={handleDeleteConversation}
-                  selectedId={selectedConversation?.id}
-                  variant="light"
-                />
-              </div>
-            )}
             <div className="relative">
               <div className="absolute -inset-6 bg-amber-soft/20 rounded-full blur-3xl" />
               <img src={catIcon} alt="Simba" className="relative w-36 h-36" />
@@ -275,18 +239,6 @@ export const ChatScreen = ({ setAuthenticated, isAdmin }: ChatScreenProps) => {
           <>
             <div className="flex-1 overflow-y-auto px-4 py-6">
               <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                {showConversations && (
-                  <div className="md:hidden mb-3 bg-warm-white rounded-2xl border border-sand-light p-3 shadow-sm">
-                    <ConversationList
-                      conversations={conversations}
-                      onCreateNewConversation={handleCreateNewConversation}
-                      onSelectConversation={handleSelectConversation}
-                      selectedId={selectedConversation?.id}
-                      variant="light"
-                    />
-                  </div>
-                )}
-
                 {messages.map((msg, index) => {
                   if (msg.speaker === "tool")
                     return <ToolBubble key={index} text={msg.text} />;

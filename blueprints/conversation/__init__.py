@@ -299,8 +299,23 @@ async def create_conversation():
 async def get_all_conversations():
     user_uuid = get_jwt_identity()
     user = await blueprints.users.models.User.get(id=user_uuid)
-    conversations = Conversation.filter(user=user).order_by("-updated_at")
-    serialized_conversations = await PydListConversation.from_queryset(conversations)
+
+    query = Conversation.filter(user=user)
+
+    search = request.args.get("search", "").strip()
+    if search:
+        query = query.filter(name__icontains=search)
+
+    query = query.order_by("-updated_at")
+
+    # `limit` is optional: when omitted we return the full list (backward
+    # compatible with any non-frontend callers). `offset` only applies with it.
+    limit = request.args.get("limit", type=int)
+    if limit is not None:
+        offset = request.args.get("offset", default=0, type=int)
+        query = query.offset(offset).limit(limit)
+
+    serialized_conversations = await PydListConversation.from_queryset(query)
 
     return jsonify(serialized_conversations.model_dump())
 
