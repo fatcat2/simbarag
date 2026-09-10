@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import uuid
@@ -30,6 +31,18 @@ from .prompts import SIMBA_SYSTEM_PROMPT
 conversation_blueprint = Blueprint(
     "conversation_api", __name__, url_prefix="/api/conversation"
 )
+
+# Detached persistence tasks. A strong reference keeps them from being garbage
+# collected mid-flight when the SSE stream is cancelled by a client disconnect.
+_persist_tasks: set[asyncio.Task] = set()
+
+
+def _persist_in_background(coro) -> asyncio.Task:
+    task = asyncio.create_task(coro)
+    _persist_tasks.add(task)
+    task.add_done_callback(_persist_tasks.discard)
+    return task
+
 
 _SYSTEM_PROMPT = SIMBA_SYSTEM_PROMPT
 
@@ -200,6 +213,15 @@ async def stream_query():
     async def event_generator():
         final_message = None
         streamed = ""
+
+        async def persist(text: str) -> None:
+            await add_message_to_conversation(
+                conversation=conversation,
+                message=text,
+                speaker="simba",
+                user=user,
+            )
+
         try:
             async for event in main_agent.astream_events(
                 payload, version="v2", config=agent_config
@@ -229,17 +251,24 @@ async def stream_query():
                             if isinstance(content, str) and content:
                                 final_message = content
 
+        except asyncio.CancelledError:
+            # The client disconnected mid-stream (e.g. a route change aborts the
+            # fetch). CancelledError is not an Exception, so without this branch
+            # persistence below would be skipped and the answer lost. Save what
+            # was generated in a detached task, then honor the cancellation.
+            text = final_message or streamed
+            if text:
+                _persist_in_background(persist(text))
+            raise
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
         final_message = final_message or streamed
         if final_message:
-            await add_message_to_conversation(
-                conversation=conversation,
-                message=final_message,
-                speaker="simba",
-                user=user,
-            )
+            # Persist via a detached, shielded task so a disconnect at this
+            # point (after generation completes) still commits the answer.
+            task = _persist_in_background(persist(final_message))
+            await asyncio.shield(task)
             yield f"data: {json.dumps({'type': 'response', 'message': final_message})}\n\n"
         else:
             yield f"data: {json.dumps({'type': 'error', 'message': 'No response generated'})}\n\n"

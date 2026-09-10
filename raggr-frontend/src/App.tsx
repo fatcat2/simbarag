@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatScreen } from "./components/ChatScreen";
@@ -31,16 +31,16 @@ const AppContainer = () => {
 
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
-      />
-      <Route
-        path="/c/:conversationId"
-        element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
-      />
       <Route path="/conversations" element={<ConversationsPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* One ChatScreen instance serves both the home ("/") and per-conversation
+          ("/c/:id") routes. Using a single catch-all route keeps that instance
+          mounted across the navigate() that fires when the first message creates
+          a conversation — a remount here would abort the in-flight SSE stream
+          (and drop the answer before it's persisted). */}
+      <Route
+        path="*"
+        element={<ChatScreen setAuthenticated={setAuthenticated} isAdmin={isAdmin} />}
+      />
     </Routes>
   );
 };

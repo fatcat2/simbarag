@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useMatch } from "react-router-dom";
 import { conversationService } from "../api/conversationService";
 import type { Conversation } from "./useConversations";
 
@@ -42,7 +42,10 @@ export function useChat({
   onSessionExpired,
   scrollToBottom,
 }: UseChatOptions) {
-  const { conversationId } = useParams();
+  // ChatScreen renders under a single catch-all route so it isn't remounted
+  // when the first message navigates to /c/:id (which would abort the stream),
+  // so the id comes from matching the URL rather than useParams.
+  const conversationId = useMatch("/c/:conversationId")?.params.conversationId;
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);

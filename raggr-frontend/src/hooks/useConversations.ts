@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useMatch, useNavigate } from "react-router-dom";
 import { conversationService } from "../api/conversationService";
 
 export type Conversation = {
@@ -13,7 +13,9 @@ const SIDEBAR_LIMIT = 10;
 
 export function useConversations() {
   const navigate = useNavigate();
-  const { conversationId } = useParams();
+  // ChatScreen now renders under a single catch-all route, so useParams no
+  // longer captures the id. Derive it from the URL directly instead.
+  const conversationId = useMatch("/c/:conversationId")?.params.conversationId;
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   const refreshConversations = useCallback(async () => {
